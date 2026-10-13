@@ -1,13 +1,18 @@
 /* KnowX help center layout. Colours follow the site through the shared wb tokens. */
 .kx {
 	--kx-gold: var(--wb-brand, light-dark(#b45309, #e6c35c));
+	--kx-canvas: var(--color-bg, light-dark(#ffffff, #121212));
 	--kx-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.05);
 	color-scheme: light dark;
+	background: var(--kx-canvas);
+	color: var(--wb-fg);
 	display: grid;
 	gap: 2rem;
 	max-width: 72rem;
 	margin-inline: auto;
-	padding-block: 0.5rem 3rem;
+	padding-inline: 1.25rem;
+	padding-block: 1.25rem 3rem;
+	border-radius: var(--wb-radius);
 }
 
 .kx :focus-visible {
@@ -229,22 +234,38 @@
 	background: var(--wb-surface);
 }
 
+.kx-heading-row {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	scroll-margin-top: 4.5rem;
+}
+
+.kx-heading-row :where(h2, h3) {
+	margin: 0;
+}
+
 .kx-heading-tools,
 .kx-copy-code {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	margin-inline-start: 0.35rem;
+	flex: none;
 	min-height: var(--wb-tap);
 	min-width: var(--wb-tap);
-	padding: 0 0.6rem;
-	border: 1px solid var(--wb-border);
-	border-radius: 6px;
-	background: var(--wb-surface);
-	color: inherit;
-	font: inherit;
-	font-size: 0.8rem;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: var(--wb-radius);
+	background: transparent;
+	color: var(--wb-muted);
 	cursor: pointer;
+}
+
+.kx-heading-tools svg,
+.kx-copy-code svg {
+	width: 1rem;
+	height: 1rem;
+	stroke-width: 1.75;
 }
 
 .kx-pre {
@@ -338,6 +359,13 @@
 	gap: 0.5rem;
 }
 
+.kx > .kx-search {
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--wb-border);
+	border-radius: var(--wb-radius);
+	background: var(--wb-surface);
+}
+
 .kx-search :global(.emdash-live-search) {
 	display: grid;
 	gap: 0.35rem;
@@ -380,6 +408,12 @@
 	align-content: start;
 }
 
+.kx .wb-empty h1 {
+	margin: 0;
+	font-size: 1.35rem;
+	line-height: 1.3;
+}
+
 @media (hover: hover) {
 	.kx-card:hover,
 	.kx-result:hover,
@@ -391,6 +425,12 @@
 	.kx-list a:hover strong,
 	.kx-toc a:hover {
 		color: var(--kx-gold);
+	}
+
+	.kx-heading-tools:hover,
+	.kx-copy-code:hover {
+		border-color: var(--wb-border);
+		color: var(--wb-fg);
 	}
 }
 

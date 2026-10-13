@@ -10,6 +10,9 @@ Copy `site-kit/` again after you update.
 - Improve  - Topic cards, search hits, FAQ rows and article extras use the same card density. The first FAQ answer is open.
 - Improve  - The search results page has one search box. JavaScript-off search still works.
 - Improve  - Article page: table of contents, previous/next and related articles are cards. Dark mode inputs follow the system setting.
+- Fix      - The kit paints its own canvas in dark, so Topics and article body stay readable when the host page stays light.
+- Fix      - Article copy-link is an icon with a name, not a "Copy link" pill inside the heading.
+- Fix      - Missing-article page uses a heading. Article search uses the same card as home.
 
 ## [0.1.0] - 2026-10-14
 

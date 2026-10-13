@@ -2,13 +2,13 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.1 presentation pass, isolated Chromium on the local lab (port 4333). Guest home, article, search, FAQ and category at 1440 and 390, light and dark.
+**Last walk:** 2026-10-14, independent presentation QA of 0.1.1 (`d368567`) against wp-card-qa + ux-foundation. Guest home, article, search (hits + empty), FAQ, category, 404 at 1440, 1024, 820, 390, light and dark. Verdict on #20: BOUNCE.
 
-Walked in the browser as a guest: G-1, G-2, G-3, G-4, G-5, G-6, G-7, G-9, G-10, G-11, G-13, G-15, FAQ, LiveSearch labels. Walked as subscriber: M-1. Walked as admin: A-2, A-3, A-5, A-6 (dashboard card), Settings. Presentation: 1440, 768, 390; kit surfaces in dark.
+Walked in the browser as a guest this pass: G-7, G-10 (404 status + empty state), search hits/empty, FAQ, category, article chrome. Presentation matrix: 1440 then 1024/820 then 390, light and dark.
 
-Checked at route level only: prove-lab (health, admin pages, products, config, log_search, helpful, search page labels, search coverage save).
+Checked at route level only: none this pass (kit presentation only).
 
-Not walked: G-8 nested category (seed has none), G-12 JavaScript actually off, G-14 contact empty (contact was set for G-13), G-92 wording rebuild, A-1 empty Insights (lab already had votes), A-4 (collection setting is not on the Settings screen), P-3 contrast numbers, P-5 full tab order, P-8 two-visitor source compare.
+Not walked this pass: G-8 nested category, G-12 JS off, G-14 contact empty, G-92, A-1 through A-6, P-5 tab order, P-8 two-visitor source, RTL, 430/768.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -76,7 +76,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 ## Known gaps
 
-- Kit cards follow the system dark setting. The starter site header and page background stay light.
+- Starter site header stays light in dark. The kit must still paint its own `.kx` canvas (T-80). A 0.1.1 bounce on #20 was that Topics and article body used light text on the host page.
 - The seed has no nested help category, so G-8 is only a top-level category walk.
 - The collection setting is internal. A-4 cannot be done from the Settings screen.
 - A block inside article text needs a trusted install. It is not in this registry release.
