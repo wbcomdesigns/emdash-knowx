@@ -36,8 +36,9 @@ npm test
 7. Admin insights
 8. Still need help: contact link
 9. Search across the owner's chosen content
-10. Lab, prove script, owner docs
-11. Registry branding and release gate
+10. Wording file
+11. Lab, prove script, owner docs
+12. Registry branding and release gate
 
 Each card lists what to build, when it is UX ready, when it is function ready, and the QA cases that prove it. A card is done when all three hold and you have commented on it with what you verified and how. Take them in order: later cards assume earlier ones.
 
@@ -58,6 +59,7 @@ Each card lists what to build, when it is UX ready, when it is function ready, a
 - Article pages are cached. The helpful widget and its counts load in the browser
 - `contact_url` is owner input that becomes a link on public pages. Accept only a site path, an http(s) link or a mailto address
 - Searching several collections multiplies the read cost. Cap the total and say so in the setting's help text
+- Messages that come back from a route (for example a refusal) reach the visitor too. Routes return a stable `code`; the kit maps codes to phrases from the wording file and never prints the route's own English message
 
 ## When you stop
 

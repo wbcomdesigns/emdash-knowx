@@ -8,6 +8,7 @@ The plan for this plugin, kept in the repository so it travels with the code. `S
 | --- | --- |
 | When a reader finds no answer | Offer a contact link. The owner sets one contact page or email in settings. |
 | What search looks through | The owner picks. Help articles by default, plus any other content they add. |
+| Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
 
 ## 0.1.0: first release
 
@@ -22,8 +23,9 @@ Work the cards in this order. Each is a GitHub issue under milestone `0.1.0` wit
 7. **Admin insights**. Proven by: A-1, A-2, A-3, A-4
 8. **Still need help: contact link**. Proven by: G-13, G-14, A-5
 9. **Search across the owner's chosen content**. Proven by: G-15
-10. **Lab, prove script, owner docs**. Proven by: tests
-11. **Registry branding and release gate**. Proven by: the whole checklist
+10. **Wording file**. Proven by: G-92
+11. **Lab, prove script, owner docs**. Proven by: tests
+12. **Registry branding and release gate**. Proven by: the whole checklist
 
 0.1.0 is done when every card is closed with a verification comment, `docs/qa/QA_CHECKLIST.md` has an honest last-walk line, and the gate in `CONTRIBUTING.md` passes. The owner publishes.
 

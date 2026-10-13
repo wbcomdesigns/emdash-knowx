@@ -36,6 +36,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-13 | Contact link set: search for nonsense, and vote No on an article | Both show Still need help with a working button |
 | G-14 | Contact link empty: do the same | No panel, no empty box |
 | G-15 | Add `posts` to the search setting, search for a word from a post | The post is in the results, labelled as a post |
+| G-92 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
 
 ## Member (subscriber role)
 

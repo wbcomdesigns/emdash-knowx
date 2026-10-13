@@ -29,9 +29,9 @@ This plugin must work for any site owner, not one niche. Judge every screen and 
 
 How it stays general:
 
-- Page titles and labels (Help center, Docs, Support, FAQ) are set by the owner, not fixed
 - The base path (`/docs/`) is a folder the owner can rename when copying the kit
 - Works with one category or fifty, and with no categories at all
+- Every visitor-facing word is in one wording file, so a non-English site or a site with its own vocabulary changes it in one place
 
 
 
@@ -43,6 +43,7 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 | --- | --- |
 | When a reader finds no answer | Offer a contact link. The owner sets one contact page or email in settings. |
 | What search looks through | The owner picks. Help articles by default, plus any other content they add. |
+| Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
 
 ## In scope for 0.1.0
 
@@ -56,6 +57,7 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 - "Still need help?" with a contact button after a search with no results and after a No vote. The link is one setting. Hidden when the setting is empty
 - The report counts how often each no-result search led to the contact link being shown
 - Search covers the collections the owner lists: help articles by default, plus posts, pages or products if added. Each result says what kind of content it is
+- One wording file, `site-kit/lib/knowx-strings.ts`: every phrase a visitor can see (buttons, labels, messages, empty states, errors shown to visitors). Components and pages take their text only from it
 
 ## Out of scope
 
@@ -70,6 +72,7 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 - Email sending (the host may have no mail configured)
 - Portable Text blocks or anything that needs a native plugin
 - Injecting scripts, styles or HTML into pages from the plugin
+- Translating the admin screens, and switching language per visitor. The wording file holds one language
 
 ## Roles
 
@@ -117,7 +120,6 @@ Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `f
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `collection` | string | `docs` | Collection that holds the articles |
-| `title` | string | `Help center` | Heading on the home page. The owner's own word for it |
 | `ask_comment` | boolean | `true` | Ask for a comment after a No vote |
 | `contact_url` | string | (empty) | A page path, a full link, or a `mailto:` address. Empty hides the prompt |
 | `search_collections` | string | `docs` | Comma-separated collections that search looks through |
@@ -158,6 +160,7 @@ None.
 | `site-kit/components/Helpful.astro` | `<Helpful id />` |
 | `site-kit/components/DocSearch.astro` | Search box with results as you type |
 | `site-kit/styles/knowx.css` | Layout for the four pages |
+| `site-kit/lib/knowx-strings.ts` | The wording file. The only place visitor-facing text is written |
 
 Plus the two shared files every Wbcom plugin kit carries: `site-kit/lib/wbcom-kit.ts` and `site-kit/styles/wbcom-base.css`.
 
@@ -185,3 +188,4 @@ A screen is done when every state listed here has been seen in a browser at 1440
 - Article pages are cached. The helpful widget and its counts load in the browser
 - `contact_url` is owner input that becomes a link on public pages. Accept only a site path, an http(s) link or a mailto address
 - Searching several collections multiplies the read cost. Cap the total and say so in the setting's help text
+- Messages that come back from a route (for example a refusal) reach the visitor too. Routes return a stable `code`; the kit maps codes to phrases from the wording file and never prints the route's own English message
