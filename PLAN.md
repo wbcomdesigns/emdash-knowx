@@ -61,3 +61,7 @@ See "Out of scope" in `SCOPE.md`. If a card seems to need one of those, stop and
 Work the original steps in order, with these placed as follows: #16 settings page (right after the schema step), #13 products (before the home and category pages), #14 article page extras (with the article page step), #15 FAQ (after the article page), #17 in-text block (prove first, before the wording file).
 
 One agent works this repo, in order, on a branch named `0.1.0`, opens a pull request into `main` and stops. It never merges, tags or publishes. Guest writes here (helpful votes, comments after a No, the search log) are public: copy the compare-and-set rate limit and guarded writes from `emdash-listora`.
+
+## Before any task
+
+Read `EMDASH-SUPPORT.md` in `~/code/emdash-plugin-starter` (`wbcomdesigns/emdash-plugin-starter`). If a task depends on a row marked "not proven", prove it on the lab first. If the proof fails, stop and tell the owner on the issue. Do not build around it.
