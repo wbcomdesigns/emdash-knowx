@@ -66,7 +66,7 @@ const KINDS: Record<string, string> = {
 };
 
 export function kindLabel(collection: string): string {
-	return KINDS[collection] || collection;
+	return KINDS[collection.toLowerCase()] || collection;
 }
 
 const CODES: Record<string, string> = {

@@ -225,8 +225,11 @@
 .kx-kind {
 	color: var(--wb-muted);
 	font-size: 0.8rem;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+}
+
+.kx-search :global(.emdash-live-search-result-collection) {
+	text-transform: none;
+	letter-spacing: 0;
 }
 
 .kx-hp {

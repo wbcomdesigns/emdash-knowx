@@ -97,7 +97,7 @@ export async function withPosts(rt: Awaited<ReturnType<typeof openSite>>["rt"]) 
 		label: "Posts",
 		labelSingular: "Post",
 		urlPattern: "/posts/{slug}",
-		supports: ["drafts", "revisions"],
+		supports: ["drafts", "revisions", "search"],
 		fields: [{ slug: "title", label: "Title", type: "string", required: true }],
 	} as never);
 	const live = await rt.fixtures.content("posts", { data: { title: "Good Soup" }, slug: "good-soup", status: "published" } as never);

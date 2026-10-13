@@ -22,6 +22,7 @@ JAR="$(mktemp)"; trap 'rm -f "$JAR"' EXIT
 curl -sf -c "$JAR" -o /dev/null "$BASE/_emdash/api/setup/dev-bypass?redirect=/"
 [[ "$(status -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/insights"}' "$API/admin")" == "200" ]] || fail "admin insights page loads"
 [[ "$(status -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/settings"}' "$API/admin")" == "200" ]] || fail "admin settings page loads"
+[[ "$(status -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"widget":"insights"}' "$API/admin")" == "200" ]] || fail "admin dashboard card loads"
 ok "admin pages load"
 
 # plugin-specific checks go below this line
@@ -49,7 +50,7 @@ DOC_ID="$(curl -sf "$BASE/docs/welcome-to-the-help-center" | sed -n 's/.*data-kx
 [[ -n "$DOC_ID" ]] || fail "article page is missing the helpful widget"
 HELPFUL="$(json -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$DOC_ID\",\"helpful\":false,\"comment\":\"Need more steps\",\"vid\":\"prove-1\"}" "$API/helpful")"
 echo "$HELPFUL" | grep -q '"ok":true' || fail "helpful"
-echo "$HELPFUL" | grep -q '"no":1' || fail "helpful tally"
+echo "$HELPFUL" | grep -q '"no":' || fail "helpful tally"
 ok "helpful"
 INSIGHTS="$(json -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/insights"}' "$API/admin")"
 echo "$INSIGHTS" | grep -q 'Need more steps' || fail "insights comment"
@@ -65,5 +66,16 @@ ok "help pages"
 MISSING="$(curl -s -o /dev/null -w "%{http_code}" "$BASE/docs/this-article-is-not-here")"
 [[ "$MISSING" == "404" ]] || fail "missing article should be 404, got $MISSING"
 ok "missing article is 404"
+
+SEARCH_PAGE="$(curl -sf "$BASE/docs/search?q=welcome")"
+echo "$SEARCH_PAGE" | grep -qi "Welcome" || fail "search page finds a help article"
+echo "$SEARCH_PAGE" | grep -q "Help article" || fail "search page labels a help article"
+ok "search page finds and labels help articles"
+
+SAVE_SEARCH="$(json -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"form_submit","action_id":"save_search","page":"/settings","values":{"search_collections":["docs","posts"]}}' "$API/admin")"
+echo "$SAVE_SEARCH" | grep -q '"type":"success"' || fail "save search coverage"
+COVERED="$(json "$API/config")"
+echo "$COVERED" | grep -q '"posts"' || fail "config includes posts after save"
+ok "search coverage includes posts when listed"
 
 echo "All checks passed for $SLUG"

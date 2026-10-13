@@ -30,8 +30,28 @@ const { collections = ["docs"], autofocus = false } = Astro.props;
 </div>
 
 <script>
+	import { kindLabel } from "../lib/knowx-strings";
+
 	function focusSearch() {
 		document.querySelector<HTMLInputElement>("[data-kx-search] .emdash-live-search-input")?.focus();
+	}
+
+	function relabel(root: ParentNode) {
+		root.querySelectorAll(".emdash-live-search-result-collection").forEach((el) => {
+			const node = el as HTMLElement;
+			const raw = (node.dataset.kxKind || node.textContent || "").trim();
+			if (!raw) return;
+			if (!node.dataset.kxKind) node.dataset.kxKind = raw;
+			node.textContent = kindLabel(raw);
+		});
+	}
+
+	function watchLabels() {
+		const box = document.querySelector("[data-kx-search]");
+		if (!box) return;
+		const list = box.querySelector(".emdash-live-search-results-list") || box;
+		relabel(list);
+		new MutationObserver(() => relabel(list)).observe(list, { childList: true });
 	}
 
 	document.addEventListener("keydown", (event) => {
@@ -40,4 +60,7 @@ const { collections = ["docs"], autofocus = false } = Astro.props;
 			focusSearch();
 		}
 	});
+
+	watchLabels();
+	document.addEventListener("astro:page-load", watchLabels);
 </script>

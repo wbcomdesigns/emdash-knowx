@@ -21,6 +21,12 @@
 		"email": "security@wbcomdesigns.com"
 	},
 	"description": "A searchable knowledge base for EmDash: categories, article feedback, and a report of what readers search for.",
+	"sections": {
+		"description": { "file": "./docs/registry/description.md" },
+		"installation": { "file": "./docs/registry/installation.md" },
+		"faq": { "file": "./docs/registry/faq.md" },
+		"changelog": { "file": "./docs/registry/changelog.md" }
+	},
 	"capabilities": [
 		"content:read",
 		"schema:read",
@@ -63,6 +69,13 @@
 				"icon": "settings",
 				"group": "KnowX"
 			}
+		],
+		"widgets": [
+			{
+				"id": "insights",
+				"title": "KnowX: what readers need",
+				"size": "half"
+			}
 		]
 	},
 	"release": {
@@ -72,7 +85,15 @@
 			},
 			"banner": {
 				"file": "./images/banner.png"
-			}
+			},
+			"screenshots": [
+				{ "file": "./images/screenshot-1-help-home.jpg" },
+				{ "file": "./images/screenshot-2-article.jpg" },
+				{ "file": "./images/screenshot-3-search.jpg" },
+				{ "file": "./images/screenshot-4-faq.jpg" },
+				{ "file": "./images/screenshot-5-insights.jpg" },
+				{ "file": "./images/screenshot-6-settings.jpg" }
+			]
 		}
 	}
 }

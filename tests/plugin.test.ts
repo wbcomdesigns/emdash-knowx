@@ -126,6 +126,28 @@ describe("settings", () => {
 			values: { search_collections: ["docs", "posts"] },
 		});
 		expect(search).toMatchObject({ toast: { type: "success" } });
+		expect(await site.call("config")).toMatchObject({ searchCollections: ["docs", "posts"] });
+
+		const withUnknown = await admin({
+			type: "form_submit",
+			action_id: "save_search",
+			page: "/settings",
+			values: { search_collections: ["docs", "no-such-type"] },
+		});
+		expect(withUnknown).toMatchObject({ toast: { type: "success" } });
+		expect(await site.call("config")).toMatchObject({ searchCollections: ["docs"] });
+		const docsOnly = (await site.call("config")) as { searchCollections: string[] };
+		expect(docsOnly.searchCollections).not.toContain("posts");
+
+		const onlyUnknown = await admin({
+			type: "form_submit",
+			action_id: "save_search",
+			page: "/settings",
+			values: { search_collections: ["no-such-type"] },
+		});
+		expect(onlyUnknown).toMatchObject({ toast: { type: "error" } });
+		expect(await site.call("config")).toMatchObject({ searchCollections: ["docs"] });
+
 		const tooMany = await admin({
 			type: "form_submit",
 			action_id: "save_search",
@@ -281,5 +303,37 @@ describe("helpful", () => {
 		expect(page).toContain("Still unclear");
 		expect(page).toContain("Missing steps");
 		expect(page).not.toContain(ids[0]);
+	});
+});
+
+describe("search labels", () => {
+	it("names collections visitors see, including uppercase slugs from LiveSearch", async () => {
+		const { kindLabel } = await import("../site-kit/lib/knowx-strings");
+		expect(kindLabel("docs")).toBe("Help article");
+		expect(kindLabel("DOCS")).toBe("Help article");
+		expect(kindLabel("posts")).toBe("Post");
+		expect(kindLabel("faq")).toBe("FAQ");
+		expect(kindLabel("pages")).toBe("Page");
+		expect(kindLabel("unknown")).toBe("unknown");
+	});
+});
+
+describe("dashboard card", () => {
+	it("names the weakest article and counts empty searches from this week", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		const empty = (await site.call("admin", { type: "page_load", page: "widget:insights" })) as {
+			blocks: unknown[];
+		};
+		expect(texts(empty)).toMatch(/No empty searches this week/);
+		expect(texts(empty)).toMatch(/No article has more No votes than Yes yet/);
+
+		await site.call("helpful", { id: ids[0], helpful: false, comment: "Need steps", vid: "v1" });
+		await site.call("log_search", { q: "refund policy", found: 0, vid: "v1" });
+		const card = (await site.call("admin", { widget: "insights" })) as { blocks: unknown[] };
+		expect(texts(card)).toMatch(/1 search found nothing this week/);
+		expect(texts(card)).toMatch(/Least helpful article: Welcome/);
+		expect(JSON.stringify(card)).not.toContain(ids[0]);
 	});
 });

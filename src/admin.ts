@@ -304,9 +304,79 @@ async function saveSettings(input: Record<string, unknown>, ctx: PluginContext):
 	return renderSettings(ctx);
 }
 
+/** Card on the EmDash dashboard: empty searches this week, and the least helpful article. */
+export async function renderDashboard(ctx: PluginContext): Promise<BlockResponse> {
+	const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+	let emptyThisWeek = 0;
+	try {
+		const searches = await ctx.storage.searches.query({ limit: 200, orderBy: { count: "desc" } });
+		for (const item of searches.items) {
+			try {
+				const row = asRecord(item.data);
+				if (row.found !== false) continue;
+				const last = asString(row.lastAt);
+				if (last && last >= weekStart) emptyThisWeek += 1;
+			} catch {
+				/* one bad row must not hide the card */
+			}
+		}
+	} catch {
+		emptyThisWeek = 0;
+	}
+
+	let weakest = "";
+	try {
+		const votes = await ctx.storage.feedback.query({ limit: 200, orderBy: { createdAt: "desc" } });
+		const byDoc = new Map<string, { yes: number; no: number }>();
+		for (const item of votes.items) {
+			try {
+				const row = asRecord(item.data);
+				const doc = asString(row.doc) || item.id.split(":")[0];
+				const bucket = byDoc.get(doc) || { yes: 0, no: 0 };
+				if (row.helpful === true) bucket.yes += 1;
+				else bucket.no += 1;
+				byDoc.set(doc, bucket);
+			} catch {
+				/* skip */
+			}
+		}
+		const worst = [...byDoc.entries()]
+			.filter(([, v]) => v.no > v.yes)
+			.sort(([, a], [, b]) => b.no - a.no)[0];
+		if (worst) {
+			const collection = await articleCollection(ctx);
+			weakest = (await entryRef(ctx, collection, worst[0]).catch(() => null))?.title || "Help article";
+		}
+	} catch {
+		weakest = "";
+	}
+
+	const emptyLine =
+		emptyThisWeek === 0
+			? "No empty searches this week."
+			: emptyThisWeek === 1
+				? "1 search found nothing this week."
+				: `${emptyThisWeek} searches found nothing this week.`;
+	const weakLine = weakest
+		? `Least helpful article: ${weakest}.`
+		: "No article has more No votes than Yes yet.";
+
+	return {
+		blocks: [
+			{ type: "section", text: emptyLine },
+			{ type: "section", text: weakLine },
+			{
+				type: "actions",
+				elements: [{ type: "link", label: "Open Insights", target: { kind: "plugin-page", path: "/insights" } }],
+			},
+		],
+	};
+}
+
 export async function handleAdmin(input: unknown, ctx: PluginContext): Promise<BlockResponse> {
 	const raw = asRecord(input);
 	const page = asString(raw.page);
+	if (asString(raw.widget) === "insights" || page.includes("widget:insights")) return renderDashboard(ctx);
 	if (asString(raw.type) === "form_submit") return saveSettings(raw, ctx);
 	if (page.includes("settings")) return renderSettings(ctx);
 	return renderInsights(ctx);
