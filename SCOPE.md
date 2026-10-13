@@ -35,6 +35,15 @@ How it stays general:
 
 
 
+## Decisions made with the owner
+
+Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
+
+| Question | Decision |
+| --- | --- |
+| When a reader finds no answer | Offer a contact link. The owner sets one contact page or email in settings. |
+| What search looks through | The owner picks. Help articles by default, plus any other content they add. |
+
 ## In scope for 0.1.0
 
 - Articles live in a normal EmDash collection (`docs`) with a hierarchical category taxonomy. The kit ships the collection definition
@@ -44,17 +53,18 @@ How it stays general:
 - Was this helpful: yes or no, with an optional comment after a no. Open to guests
 - Search log: each term with how often it was searched and whether it found anything
 - Admin: article helpfulness table, feedback comments, top searches, searches with no results
+- "Still need help?" with a contact button after a search with no results and after a No vote. The link is one setting. Hidden when the setting is empty
+- The report counts how often each no-result search led to the contact link being shown
+- Search covers the collections the owner lists: help articles by default, plus posts, pages or products if added. Each result says what kind of content it is
 
 ## Out of scope
 
 Do not build these. If a card seems to need one, stop and ask the owner.
 
-- Article view counts
 - Live chat or ticket hand-off
 - AI answers
 - Versioned docs
 - Multi-product knowledge bases
-- Restricting articles to members
 - Article ratings on a 5-star scale (that is the Reviews plugin)
 - Any paid or Pro feature
 - Email sending (the host may have no mail configured)
@@ -109,6 +119,8 @@ Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `f
 | `collection` | string | `docs` | Collection that holds the articles |
 | `title` | string | `Help center` | Heading on the home page. The owner's own word for it |
 | `ask_comment` | boolean | `true` | Ask for a comment after a No vote |
+| `contact_url` | string | (empty) | A page path, a full link, or a `mailto:` address. Empty hides the prompt |
+| `search_collections` | string | `docs` | Comma-separated collections that search looks through |
 
 ## Routes
 
@@ -117,7 +129,7 @@ Base: `/_emdash/api/plugins/knowx/<name>`.
 | Route | Who | Methods | Input | Returns |
 | --- | --- | --- | --- | --- |
 | `health` | public | GET | - | `ok`, version, whether the collection exists, article count |
-| `search` | public | GET | `q` | Up to 20 matches (title, excerpt, url, category). Logs the term |
+| `search` | public | GET | `q` | Up to 20 matches (title, excerpt, url, category). Logs the term. Each match carries its content type. Returns `contact_url` when there are no matches |
 | `helpful` | public | POST | `id`, `helpful`, `comment` | Saved. One vote per visitor per article, rate limited per IP |
 | `tally` | public | GET | `id` | `yes` and `no` counts for one article |
 | `admin` | admin | POST | Block Kit | Insights and settings |
@@ -161,6 +173,7 @@ A screen is done when every state listed here has been seen in a browser at 1440
 | Search | Results as you type with a 300ms pause, no-results state with a suggestion, error state |
 | Helpful widget | Idle, thanks after yes, comment box after no, already voted, error |
 | Admin insights | Each table has an empty state. Search terms and comments shown as plain text |
+| Still need help | A calm panel with one button, after no results and after a No vote. Absent when the owner has not set a contact link |
 
 ## Risks and open questions
 
@@ -170,3 +183,5 @@ A screen is done when every state listed here has been seen in a browser at 1440
 - The search log must not store personal data. Drop terms that look like an email address or a long number
 - Kit pages must not import starter-only files. Take the layout as a prop or document the one import to change
 - Article pages are cached. The helpful widget and its counts load in the browser
+- `contact_url` is owner input that becomes a link on public pages. Accept only a site path, an http(s) link or a mailto address
+- Searching several collections multiplies the read cost. Cap the total and say so in the setting's help text

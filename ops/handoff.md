@@ -1,6 +1,6 @@
 # Handoff: KnowX Knowledge Base
 
-Read this first. Then `SCOPE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `docs/qa/QA_CHECKLIST.md`.
+Read this first. Then `SCOPE.md`, `PLAN.md`, `AGENTS.md`, `CONTRIBUTING.md` and `docs/qa/QA_CHECKLIST.md`.
 
 ## Where it stands (2026-10-13)
 
@@ -34,8 +34,10 @@ npm test
 5. Kit page: article
 6. Search box and results page
 7. Admin insights
-8. Lab, prove script, owner docs
-9. Registry branding and release gate
+8. Still need help: contact link
+9. Search across the owner's chosen content
+10. Lab, prove script, owner docs
+11. Registry branding and release gate
 
 Each card lists what to build, when it is UX ready, when it is function ready, and the QA cases that prove it. A card is done when all three hold and you have commented on it with what you verified and how. Take them in order: later cards assume earlier ones.
 
@@ -54,6 +56,8 @@ Each card lists what to build, when it is UX ready, when it is function ready, a
 - The search log must not store personal data. Drop terms that look like an email address or a long number
 - Kit pages must not import starter-only files. Take the layout as a prop or document the one import to change
 - Article pages are cached. The helpful widget and its counts load in the browser
+- `contact_url` is owner input that becomes a link on public pages. Accept only a site path, an http(s) link or a mailto address
+- Searching several collections multiplies the read cost. Cap the total and say so in the setting's help text
 
 ## When you stop
 

@@ -33,6 +33,9 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-10 | Open an article url that does not exist | 404 page with a 404 status |
 | G-11 | Type in the search box | Results appear after a short pause. Arrow keys move through them |
 | G-12 | Turn JavaScript off and search | The results page works |
+| G-13 | Contact link set: search for nonsense, and vote No on an article | Both show Still need help with a working button |
+| G-14 | Contact link empty: do the same | No panel, no empty box |
+| G-15 | Add `posts` to the search setting, search for a word from a post | The post is in the results, labelled as a post |
 
 ## Member (subscriber role)
 
@@ -48,6 +51,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-2 | Open Insights after votes and searches | Least helpful articles by name, comments, top searches, no-result searches |
 | A-3 | Search for `<script>` as a guest, then open Insights | The term shows as plain text |
 | A-4 | Change the collection setting to one that does not exist | A clear message. Search returns nothing instead of failing |
+| A-5 | Set the contact link to a `javascript:` address | Refused. Only a path, an http(s) link or a mailto address is accepted |
 
 ## Presentation, every screen
 
