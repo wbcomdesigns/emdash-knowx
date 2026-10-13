@@ -46,8 +46,15 @@
 		"pages": [
 			{
 				"path": "/insights",
-				"label": "KnowX Knowledge Base",
-				"icon": "sparkle"
+				"label": "Insights",
+				"icon": "chart",
+				"group": "KnowX"
+			},
+			{
+				"path": "/settings",
+				"label": "Settings",
+				"icon": "settings",
+				"group": "KnowX"
 			}
 		]
 	},

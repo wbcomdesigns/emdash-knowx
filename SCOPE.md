@@ -185,7 +185,8 @@ None.
 
 | Page | What it shows |
 | --- | --- |
-| `/insights` | Stats, least helpful articles, recent feedback comments, top searches, searches with no results, settings |
+| `/insights` | Stats, least helpful articles, recent feedback comments, top searches, searches with no results |
+| `/settings` | Contact link, ask for a comment after a No, what search covers. Product icons are added with the products card |
 
 ## Site kit
 

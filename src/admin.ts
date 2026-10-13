@@ -1,9 +1,20 @@
 import type { PluginContext } from "emdash/plugin";
 
 import { collectionStatus } from "./core";
+import {
+	listContentTypes,
+	loadSettings,
+	parseContactUrl,
+	parseSearchCollections,
+	SEARCH_COLLECTION_CAP,
+	searchCollectionsSetting,
+} from "./settings";
+import { asBoolean, asRecord, asString } from "./util";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
 export type BlockResponse = { blocks: Array<Record<string, unknown>>; toast?: Toast };
+
+const lines = (items: string[]) => items.map((text) => ({ type: "context", text }));
 
 export async function renderInsights(
 	ctx: PluginContext,
@@ -49,6 +60,124 @@ export async function renderInsights(
 	};
 }
 
-export async function handleAdmin(_input: unknown, ctx: PluginContext): Promise<BlockResponse> {
+export async function renderSettings(
+	ctx: PluginContext,
+	extra?: Pick<BlockResponse, "toast">,
+): Promise<BlockResponse> {
+	const settings = await loadSettings(ctx);
+	const types = await listContentTypes(ctx);
+	const options = types.map((item) => ({
+		label: item.searchable ? item.label : `${item.label} (search off)`,
+		value: item.slug,
+	}));
+
+	return {
+		blocks: [
+			{ type: "header", text: "Settings" },
+			{ type: "section", text: "Each group saves on its own." },
+			{ type: "header", text: "After a No vote" },
+			...lines(["Ask the reader what was missing after they vote No on an article."]),
+			{
+				type: "form",
+				block_id: "settings_feedback",
+				fields: [
+					{
+						type: "toggle",
+						action_id: "ask_comment",
+						label: "Ask for a comment after a No vote",
+						initial_value: settings.askComment,
+					},
+				],
+				submit: { label: "Save feedback", action_id: "save_feedback" },
+			},
+			{ type: "divider" },
+			{ type: "header", text: "Still need help" },
+			...lines([
+				"Shown after a search with no results and after a No vote. A page path, an http(s) link, or a mailto address. Leave empty to hide the prompt.",
+			]),
+			{
+				type: "form",
+				block_id: "settings_contact",
+				fields: [
+					{
+						type: "text_input",
+						action_id: "contact_url",
+						label: "Contact link",
+						initial_value: settings.contactUrl,
+					},
+				],
+				submit: { label: "Save contact link", action_id: "save_contact" },
+			},
+			{ type: "divider" },
+			{ type: "header", text: "What search looks through" },
+			...lines([
+				`Tick the site's content types. Help search uses EmDash search, so a type with search turned off will not return results. At most ${SEARCH_COLLECTION_CAP}, because each extra type costs another search.`,
+			]),
+			options.length
+				? {
+						type: "form",
+						block_id: "settings_search",
+						fields: [
+							{
+								type: "checkbox",
+								action_id: "search_collections",
+								label: "Content types",
+								options,
+								initial_value: settings.searchCollections.filter((slug) =>
+									options.some((item) => item.value === slug),
+								),
+							},
+						],
+						submit: { label: "Save search", action_id: "save_search" },
+					}
+				: {
+						type: "empty",
+						title: "No content types found",
+						description: "The site has no collections to search yet.",
+					},
+		],
+		toast: extra?.toast,
+	};
+}
+
+async function saveSettings(input: Record<string, unknown>, ctx: PluginContext): Promise<BlockResponse> {
+	const action = asString(input.action_id);
+	const values = asRecord(input.values);
+	const saved = (message: string) => renderSettings(ctx, { toast: { message, type: "success" } });
+	const refused = (message: string) => renderSettings(ctx, { toast: { message, type: "error" } });
+
+	if (action === "save_feedback") {
+		await ctx.settings.set("ask_comment", asBoolean(values.ask_comment));
+		return saved("Feedback setting saved.");
+	}
+
+	if (action === "save_contact") {
+		const parsed = parseContactUrl(values.contact_url);
+		if (!parsed.ok) {
+			return refused("Use a page path, an http(s) link, or a mailto address. Nothing was changed.");
+		}
+		await ctx.settings.set("contact_url", parsed.value);
+		return saved(parsed.value ? "Contact link saved." : "Contact link cleared. The prompt is hidden.");
+	}
+
+	if (action === "save_search") {
+		const settings = await loadSettings(ctx);
+		const parsed = parseSearchCollections(values.search_collections, settings.collection);
+		if (!parsed.ok) return refused(parsed.reason);
+		const known = new Set((await listContentTypes(ctx)).map((item) => item.slug));
+		const value = parsed.value.filter((slug) => known.has(slug));
+		if (!value.length) return refused("Tick at least one content type that exists on this site.");
+		await ctx.settings.set("search_collections", searchCollectionsSetting(value));
+		return saved("Search coverage saved.");
+	}
+
+	return renderSettings(ctx);
+}
+
+export async function handleAdmin(input: unknown, ctx: PluginContext): Promise<BlockResponse> {
+	const raw = asRecord(input);
+	const page = asString(raw.page);
+	if (asString(raw.type) === "form_submit") return saveSettings(raw, ctx);
+	if (page.includes("settings")) return renderSettings(ctx);
 	return renderInsights(ctx);
 }

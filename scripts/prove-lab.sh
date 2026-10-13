@@ -20,8 +20,9 @@ ok "guests refused on member and admin routes"
 
 JAR="$(mktemp)"; trap 'rm -f "$JAR"' EXIT
 curl -sf -c "$JAR" -o /dev/null "$BASE/_emdash/api/setup/dev-bypass?redirect=/"
-[[ "$(status -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/insights"}' "$API/admin")" == "200" ]] || fail "admin page loads"
-ok "admin page loads"
+[[ "$(status -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/insights"}' "$API/admin")" == "200" ]] || fail "admin insights page loads"
+[[ "$(status -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/settings"}' "$API/admin")" == "200" ]] || fail "admin settings page loads"
+ok "admin pages load"
 
 # plugin-specific checks go below this line
 HEALTH="$(json "$API/health")"

@@ -2,8 +2,14 @@ import type { SandboxedPlugin } from "emdash/plugin";
 
 import { handleAdmin } from "./admin";
 import { collectionStatus } from "./core";
+import { pageMetadata } from "./metadata";
 
 const plugin: SandboxedPlugin = {
+	hooks: {
+		"page:metadata": {
+			handler: async (event, ctx) => pageMetadata(event.page, ctx),
+		},
+	},
 	routes: {
 		health: {
 			public: true,
