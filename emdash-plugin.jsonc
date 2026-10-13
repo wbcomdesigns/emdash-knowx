@@ -23,7 +23,8 @@
 	"description": "A searchable knowledge base for EmDash: categories, article feedback, and a report of what readers search for.",
 	"capabilities": [
 		"content:read",
-		"schema:read"
+		"schema:read",
+		"taxonomies:read"
 	],
 	"allowedHosts": [],
 	"storage": {
@@ -39,6 +40,12 @@
 				"found",
 				"count",
 				"lastAt"
+			]
+		},
+		"product_icons": {
+			"indexes": [
+				"slug",
+				"icon"
 			]
 		}
 	},

@@ -30,5 +30,10 @@ echo "$HEALTH" | grep -q '"collectionExists":true' || fail "docs collection exis
 echo "$HEALTH" | grep -q '"faqCollectionExists":true' || fail "faq collection exists"
 echo "$HEALTH" | grep -q '"articleCount":[1-9]' || fail "published article count"
 ok "collections and article count"
+echo "$HEALTH" >/dev/null
+PRODUCTS="$(json "$API/products")"
+echo "$PRODUCTS" | grep -q '"productLayer":true' || fail "product layer for three categories"
+echo "$PRODUCTS" | grep -q 'Getting started' || fail "product names"
+ok "products"
 
 echo "All checks passed for $SLUG"

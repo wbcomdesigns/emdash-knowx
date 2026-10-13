@@ -123,7 +123,9 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 
 ## Capabilities
 
-`content:read`, `schema:read`
+`content:read`, `schema:read`, `taxonomies:read`
+
+`taxonomies:read` is so Settings can list help categories by name when the owner picks a product icon. Added with the owner on 2026-10-13.
 
 Ask for nothing more without the owner's agreement: every capability is shown to the site owner at install.
 
@@ -141,6 +143,17 @@ Row id: `<docId>:<visitorHash>`. One vote per visitor per article. Indexes: `doc
 | `comment` | string | Optional, up to 500 characters, only after a no |
 | `visitor` | string | SHA-256 of the IP plus a per-site salt. Never the IP itself |
 | `createdAt` | string | ISO time |
+
+### `product_icons`
+
+Row id: the category term id. Indexes: `slug`, `icon`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `slug` | string | Category slug at the time it was saved |
+| `label` | string | Category name |
+| `icon` | string | One of the fixed icon set |
+| `updatedAt` | string | ISO time |
 
 ### `searches`
 
@@ -170,6 +183,7 @@ Base: `/_emdash/api/plugins/knowx/<name>`.
 | Route | Who | Methods | Input | Returns |
 | --- | --- | --- | --- | --- |
 | `health` | public | GET | - | `ok`, version, whether the collection exists, article count |
+| `products` | public | GET | - | Top-level categories with name, description and icon. One item means the kit shows no product layer |
 | `log_search` | public | POST | `q`, `found` (count), honeypot field | Records the term and whether it found anything. Rate limited per visitor. The search itself is EmDash's, run by the kit page |
 | `helpful` | public | POST | `id`, `helpful`, `comment` | Saved. One vote per visitor per article, rate limited per IP |
 | `tally` | public | GET | `id` | `yes` and `no` counts for one article |
@@ -186,7 +200,7 @@ None.
 | Page | What it shows |
 | --- | --- |
 | `/insights` | Stats, least helpful articles, recent feedback comments, top searches, searches with no results |
-| `/settings` | Contact link, ask for a comment after a No, what search covers. Product icons are added with the products card |
+| `/settings` | Contact link, ask for a comment after a No, what search covers, product icons for top-level categories |
 
 ## Site kit
 
@@ -200,6 +214,7 @@ None.
 | `site-kit/components/Helpful.astro` | `<Helpful id />` |
 | `site-kit/components/DocSearch.astro` | Search box with results as you type |
 | `site-kit/styles/knowx.css` | Layout for the four pages |
+| `site-kit/lib/knowx-products.ts` | Whether the help home shows product cards (more than one top-level category) |
 | `site-kit/lib/knowx-strings.ts` | The wording file. The only place visitor-facing text is written |
 
 Plus the two shared files every Wbcom plugin kit carries: `site-kit/lib/wbcom-kit.ts` and `site-kit/styles/wbcom-base.css`.

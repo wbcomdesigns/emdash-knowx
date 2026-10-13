@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { categoryTerms, docsCollection, faqCollection } from "../site-kit/seed/collection.mjs";
 // @ts-expect-error plain module shared with the lab seed
 import { docs, faqs } from "../site-kit/seed/articles.mjs";
-import { openSite, withDocs, withPosts } from "./site";
+import { openSite, withCategories, withDocs, withPosts } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
 afterEach(async () => {
@@ -172,5 +172,47 @@ describe("page metadata", () => {
 				page: { ...page.page, content: { collection: "posts", id: "x", slug: "x" } },
 			}),
 		).toBeNull();
+	});
+});
+
+describe("products", () => {
+	it("hides the product layer for one category and shows names, not ids, when saving icons", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		const one = await withCategories(site.rt, [{ slug: "getting-started", label: "Getting started", description: "First steps" }]);
+		const single = (await site.call("products")) as { items: unknown[]; productLayer: boolean };
+		expect(single.productLayer).toBe(false);
+		expect(single.items).toHaveLength(1);
+
+		await site.rt.fixtures.taxonomy({
+			name: "doc_category",
+			slug: "billing",
+			label: "Account and billing",
+			data: { description: "Plans" },
+		});
+		const page = JSON.stringify(await site.rt.admin.loadPage("/settings"));
+		expect(page).toContain('"label":"Getting started"');
+		expect(page).toContain('"label":"Account and billing"');
+		expect(page).not.toContain(`"label":"${one.terms[0].id}"`);
+
+		const saved = await site.call("admin", {
+			type: "form_submit",
+			action_id: "save_icons",
+			page: "/settings",
+			values: { [`icon__${one.terms[0].id}`]: "rocket" },
+		});
+		expect(saved).toMatchObject({ toast: { type: "success" } });
+		const products = (await site.call("products")) as { items: Array<{ label: string; icon: string }>; productLayer: boolean };
+		expect(products.productLayer).toBe(true);
+		expect(products.items.find((item) => item.label === "Getting started")?.icon).toBe("rocket");
+
+		const refused = await site.call("admin", {
+			type: "form_submit",
+			action_id: "save_icons",
+			page: "/settings",
+			values: { [`icon__${one.terms[0].id}`]: "<script>alert(1)</script>" },
+		});
+		expect(refused).toMatchObject({ toast: { type: "error" } });
 	});
 });

@@ -3,6 +3,7 @@ import type { SandboxedPlugin } from "emdash/plugin";
 import { handleAdmin } from "./admin";
 import { collectionStatus } from "./core";
 import { pageMetadata } from "./metadata";
+import { listTopLevelCategories, useProductLayer } from "./products";
 
 const plugin: SandboxedPlugin = {
 	hooks: {
@@ -23,6 +24,13 @@ const plugin: SandboxedPlugin = {
 					articleCount: status.articleCount,
 					faqCollectionExists: status.faqCollectionExists,
 				};
+			},
+		},
+		products: {
+			public: true,
+			handler: async (_routeCtx, ctx) => {
+				const items = await listTopLevelCategories(ctx);
+				return { ok: true, items, productLayer: useProductLayer(items) };
 			},
 		},
 		admin: {

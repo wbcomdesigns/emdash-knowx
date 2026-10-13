@@ -12,11 +12,11 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-#1 and #16 are done on branch `0.1.0`. Docs and FAQ collections have search on. Settings has contact link, comment-after-No, and tick-boxes of the site's real content types from `listCollections`. Article and breadcrumb JSON-LD are on help pages. Lab: `../emdash-lab-knowx` on port 4333.
+#1, #16 and #13 are done on branch `0.1.0`. Docs and FAQ collections have search on. Settings covers contact, comment-after-No, search types, and product icons. `taxonomies:read` was added with the owner so Settings can list category names. Lab: `../emdash-lab-knowx` on port 4333.
 
 ## Start with
 
-#13 (products: icons in plugin storage, chosen on Settings).
+#2 (search log only, not a search route), then #3 (Was this helpful).
 
 ## Prove before you build on it
 

@@ -1,6 +1,7 @@
 import type { PluginContext } from "emdash/plugin";
 
 import { collectionStatus } from "./core";
+import { listTopLevelCategories, PRODUCT_ICONS, saveProductIcon, useProductLayer } from "./products";
 import {
 	listContentTypes,
 	loadSettings,
@@ -66,10 +67,12 @@ export async function renderSettings(
 ): Promise<BlockResponse> {
 	const settings = await loadSettings(ctx);
 	const types = await listContentTypes(ctx);
+	const products = await listTopLevelCategories(ctx);
 	const options = types.map((item) => ({
 		label: item.searchable ? item.label : `${item.label} (search off)`,
 		value: item.slug,
 	}));
+	const iconOptions = PRODUCT_ICONS.map((item) => ({ label: item.label, value: item.slug }));
 
 	return {
 		blocks: [
@@ -135,6 +138,31 @@ export async function renderSettings(
 						title: "No content types found",
 						description: "The site has no collections to search yet.",
 					},
+			{ type: "divider" },
+			{ type: "header", text: "Product icons" },
+			...lines([
+				useProductLayer(products)
+					? "Each top-level category is a product card on the help home. Pick an icon from this set. The description is the category description."
+					: "With one top-level category the help home shows a plain list, not product cards. You can still pick an icon here for later.",
+			]),
+			products.length
+				? {
+						type: "form",
+						block_id: "settings_icons",
+						fields: products.map((item) => ({
+							type: "select",
+							action_id: `icon__${item.id}`,
+							label: item.label,
+							initial_value: item.icon,
+							options: iconOptions,
+						})),
+						submit: { label: "Save icons", action_id: "save_icons" },
+					}
+				: {
+						type: "empty",
+						title: "No help categories yet",
+						description: "Add a help category, then pick an icon here.",
+					},
 		],
 		toast: extra?.toast,
 	};
@@ -169,6 +197,17 @@ async function saveSettings(input: Record<string, unknown>, ctx: PluginContext):
 		if (!value.length) return refused("Tick at least one content type that exists on this site.");
 		await ctx.settings.set("search_collections", searchCollectionsSetting(value));
 		return saved("Search coverage saved.");
+	}
+
+	if (action === "save_icons") {
+		let savedCount = 0;
+		for (const [key, raw] of Object.entries(values)) {
+			if (!key.startsWith("icon__")) continue;
+			const termId = key.slice("icon__".length);
+			if (await saveProductIcon(ctx, termId, asString(raw))) savedCount += 1;
+		}
+		if (!savedCount) return refused("Pick an icon from the list. Nothing was changed.");
+		return saved("Product icons saved.");
 	}
 
 	return renderSettings(ctx);

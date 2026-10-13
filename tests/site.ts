@@ -64,6 +64,32 @@ export async function withDocs(
 	return { ids };
 }
 
+/** Add the help category taxonomy and the given top-level terms. */
+export async function withCategories(
+	rt: Awaited<ReturnType<typeof openSite>>["rt"],
+	terms: Array<{ slug: string; label: string; description?: string }>,
+) {
+	await rt.fixtures.taxonomyDefinition({
+		name: "doc_category",
+		label: "Help categories",
+		labelSingular: "Help category",
+		hierarchical: true,
+		collections: ["docs"],
+	});
+	const created = [];
+	for (const term of terms) {
+		created.push(
+			await rt.fixtures.taxonomy({
+				name: "doc_category",
+				slug: term.slug,
+				label: term.label,
+				data: term.description ? { description: term.description } : {},
+			}),
+		);
+	}
+	return { terms: created };
+}
+
 /** Add a posts collection with one public post and one draft. */
 export async function withPosts(rt: Awaited<ReturnType<typeof openSite>>["rt"]) {
 	await rt.fixtures.collection({
