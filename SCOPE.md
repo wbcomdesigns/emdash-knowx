@@ -10,7 +10,7 @@ Give a site a help center: articles in categories, a search that readers actuall
 
 **WordPress source:** KnowX theme (`~/dev/repos/knowx`) for layout and wording only. It is a WordPress theme, so nothing ports directly. Do not copy PHP.
 
-**Brand:** KnowX brand. No logo folder was found under `~/Documents/brand logos/`. Ask the owner for the KnowX mark before the branding card. The theme lives at `~/dev/repos/knowx`.
+**Brand:** KnowX. Logos and the brand sheet: `~/Documents/brand logos/knowx/` (a dark X on a yellow-gold tile, `#facc15` on `#16171c`, Manrope headings). The registry icon is already in this repo as `icon.png`. No banner or horizontal lockup has been drawn yet.
 
 ## Fits every kind of site
 
