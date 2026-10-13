@@ -4,6 +4,20 @@
 
 This file is the contract for the plugin. Code, tests, docs and cards all follow it. If something here is wrong, change it here first, in the same pull request as the code.
 
+## Corrections after reading EmDash's own guides (2026-10-13)
+
+**This section wins over any older line below that disagrees with it.**
+
+- **Search is EmDash's own.** `LiveSearch` from `emdash/ui/search` for instant results, `search()` from `emdash` on the search page, and the Ctrl or Cmd + K pattern from EmDash's guide. KnowX builds no search box, no index and no search route. The collections it covers must have search turned on in their definition.
+- **What KnowX adds around search:** limiting it to the current product, the "Still need help?" contact link, and the search log. The kit's search page runs `search()` on the server and reports the term and the result count to `log_search`. If `LiveSearch` cannot report what was typed, the log covers the search page only, and the report says so plainly.
+- **Categories and products are EmDash's taxonomy.** A category has a name and a description only, so the product icon is kept in plugin storage keyed by the category and chosen on the Settings page from a fixed icon set.
+- **Dashboard card** (`admin.widgets`): searches with no results this week, and the least helpful article.
+- **Visitors first:** a visitor is never locked out by hosting. Trusted visitor address where EmDash supplies it, browser cookie otherwise, written content always approved first.
+- **Block inside post text:** only with a trusted install. The registry install is the whole product without it.
+- **FAQ** is its own EmDash collection, shown with the native open-and-close element and FAQ data for search engines.
+- **Dates** ("Last updated") use the site's time zone and date format from EmDash's site settings.
+- **Admin pages:** Insights (reports), Settings (contact link, ask for a comment after a No, what search covers, product icons), plus the dashboard card.
+
 ## Purpose
 
 Give a site a help center: articles in categories, a search that readers actually use, a Was-this-helpful vote on each article, and a report that tells the owner which articles fail and which searches find nothing.
@@ -74,7 +88,7 @@ Extra, not in the theme: Was this helpful, the search log, the report of weak ar
 - Articles live in a normal EmDash collection (`docs`) with a hierarchical category taxonomy. The kit ships the collection definition
 - Kit pages: help center home (search box, category grid), category page, article page, search results
 - Article page: breadcrumbs, table of contents built from headings, previous and next in the category, related articles
-- Search route over published articles: title, excerpt and body text
+- Search is EmDash's own (`search()` and `LiveSearch`), limited to the help content the owner ticks
 - Was this helpful: yes or no, with an optional comment after a no. Open to guests
 - Search log: each term with how often it was searched and whether it found anything
 - Admin: article helpfulness table, feedback comments, top searches, searches with no results
@@ -144,10 +158,10 @@ Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `f
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `collection` | string | `docs` | Collection that holds the articles |
+| `collection` | string | `docs` | Collection that holds the articles. Internal: never shown on the Settings page |
 | `ask_comment` | boolean | `true` | Ask for a comment after a No vote |
 | `contact_url` | string | (empty) | A page path, a full link, or a `mailto:` address. Empty hides the prompt |
-| `search_collections` | string | `docs` | Comma-separated collections that search looks through |
+| `search_collections` | string | `docs` | Content types the help search covers. Set with tick-boxes |
 
 ## Routes
 
@@ -156,7 +170,7 @@ Base: `/_emdash/api/plugins/knowx/<name>`.
 | Route | Who | Methods | Input | Returns |
 | --- | --- | --- | --- | --- |
 | `health` | public | GET | - | `ok`, version, whether the collection exists, article count |
-| `search` | public | GET | `q` | Up to 20 matches (title, excerpt, url, category). Logs the term. Each match carries its content type. Returns `contact_url` when there are no matches |
+| `log_search` | public | POST | `q`, `found` (count), honeypot field | Records the term and whether it found anything. Rate limited per visitor. The search itself is EmDash's, run by the kit page |
 | `helpful` | public | POST | `id`, `helpful`, `comment` | Saved. One vote per visitor per article, rate limited per IP |
 | `tally` | public | GET | `id` | `yes` and `no` counts for one article |
 | `admin` | admin | POST | Block Kit | Insights and settings |

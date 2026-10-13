@@ -1,66 +1,46 @@
-# Handoff: KnowX Knowledge Base
+# Handoff: KnowX (2026-10-13, plan locked)
 
-Read this first. Then `SCOPE.md`, `PLAN.md`, `AGENTS.md`, `CONTRIBUTING.md` and `docs/qa/QA_CHECKLIST.md`.
+You are the one agent for this repo. Read this, then work.
 
-## Where it stands (2026-10-13)
+## Read first, in this order
 
-Starter only. Nothing built.
+1. Load the `emdash-plugin-development` skill. It separates what EmDash core already gives every site, what a plugin may add, and the owner's standing rules.
+2. EmDash's own guides in the lab site once it exists: `.agents/skills/building-emdash-site` and `.agents/skills/creating-plugins` (with `references/sandbox-boundaries.md`). They win over everything else.
+3. `~/code/emdash-plugin-starter/EMDASH-SUPPORT.md`: what is proven, what is documented but not tried, what is not possible.
+4. `SCOPE.md` here. Start with its section "Corrections after reading EmDash's own guides": it wins over older lines.
+5. `PLAN.md` here: the order of work, at the end of the file.
 
-| Thing | Where |
-| --- | --- |
-| Repo | `wbcomdesigns/emdash-knowx`, local `~/code/emdash-knowx` |
-| Registry package | `@vapvarun.bsky.social/knowx` (not published) |
-| Lab site | `~/code/emdash-lab-knowx`, port 4333 |
-| Cards | GitHub issues in this repo, milestone `0.1.0` |
-| Reference plugin | `~/code/emdash-listora` (shipped), `~/code/emdash-reviews` (same starter, engine built) |
-| Shared starter | `~/code/emdash-plugin-starter` |
+## Where it stands
 
-## Start
+Starter only. No plugin code yet. The brand kit, scope, plan and 17 tasks are ready.
 
-```bash
-cd ~/code/emdash-knowx
-npm install --legacy-peer-deps
-npm test
-./scripts/setup-lab.sh
-./scripts/reset-lab.sh
-```
+## Start with
 
-## Cards, in order
+#1 (schema, the docs and faq collections with search turned on), #16 (Settings page), #13 (products).
 
-1. Schema, manifest and the docs collection
-2. Search route and search log
-3. Was this helpful
-4. Kit pages: home and category
-5. Kit page: article
-6. Search box and results page
-7. Admin insights
-8. Still need help: contact link
-9. Search across the owner's chosen content
-10. Wording file
-11. Lab, prove script, owner docs
-12. Registry branding and release gate
+## Prove before you build on it
 
-Each card lists what to build, when it is UX ready, when it is function ready, and the QA cases that prove it. A card is done when all three hold and you have commented on it with what you verified and how. Take them in order: later cards assume earlier ones.
+EmDash `search()` and `LiveSearch` on the kit pages, and whether `LiveSearch` can report what was typed. Listing content types. A dashboard card. A trusted-install block (#17, late).
 
-## Decisions already made
+Prove each on the lab first. If a proof fails, stop, write what you tried and what happened on the task's issue, and wait for the owner. Not possible on EmDash means the idea is dropped, not worked around.
 
-- Free scope only. `SCOPE.md` lists what is in and what is out.
-- Members sign in with their EmDash account. Guests can do only what `SCOPE.md` marks public.
-- Kit markup is the same for every visitor, because site pages are cached without regard to cookies.
-- The owner publishes. Agents stop at a passing gate and hand over.
+## Not in this release
 
-## Watch for
+Our own search route and index (EmDash search replaces them), a changelog page (Roadmap has one), a colour per product.
 
-- Search reads published articles and filters in the plugin. Fine for a few hundred articles. Confirm `ctx.content.list` limits and whether a `where` on searchable text exists before choosing the approach
-- `helpful` and `search` are public writes. Rate limit per IP, cap lengths, and never echo a logged term into admin HTML unescaped
-- `requestMeta.ip` may be empty on some hosts. Then every visitor shares one vote bucket: decide and document the fallback
-- The search log must not store personal data. Drop terms that look like an email address or a long number
-- Kit pages must not import starter-only files. Take the layout as a prop or document the one import to change
-- Article pages are cached. The helpful widget and its counts load in the browser
-- `contact_url` is owner input that becomes a link on public pages. Accept only a site path, an http(s) link or a mailto address
-- Searching several collections multiplies the read cost. Cap the total and say so in the setting's help text
-- Messages that come back from a route (for example a refusal) reach the visitor too. Routes return a stable `code`; the kit maps codes to phrases from the wording file and never prints the route's own English message
+## How to work
 
-## When you stop
+- Branch `0.1.0` from `main`. Commit per finished task. Open one pull request into `main` and keep pushing to it.
+- Lab: `./scripts/setup-lab.sh` creates `../emdash-lab-knowx` on port 4333. `./scripts/reset-lab.sh`, `./scripts/prove-lab.sh`, `./scripts/lab-role.sh`. To walk visitor features on the lab, add `trustedProxyHeaders: ["x-forwarded-for"]` to the lab's EmDash config and send that header, and also walk the cookie fallback without it.
+- Copy proven patterns from `~/code/emdash-listora` (branch `0.5.0`): the hourly notice task `notifyOwners`, guarded writes with `updateIf`, the compare-and-set rate limit, the version token on every admin decision, the single layout file in the kit.
+- A task is done when its tests pass and you have walked it in a browser as a visitor and as the admin, including a failed request, at 1440 and 390, in light and dark. Say on the issue what you walked and what you did not.
+- Add each task's cases to `docs/qa/QA_CHECKLIST.md`.
+- No AI attribution in commits or pull requests. No em-dashes. Plain words in everything a site owner reads.
 
-Rewrite "Where it stands" with the date and the truth: what works, what was verified and how, what was not verified. Update `docs/qa/QA_CHECKLIST.md`'s last-walk line the same way.
+## You stop when
+
+Every 0.1.0 task is closed with a verification comment, the checklist has an honest last-walk line, and the pull request is open. You never merge into `main`, never tag, never publish. A registry release cannot be changed. The owner releases.
+
+## Who checks your work
+
+The Listora session reviews each plugin's pull request against `SCOPE.md` and walks it in a browser before the owner releases. Leave the lab in a state that can be reset and walked.
