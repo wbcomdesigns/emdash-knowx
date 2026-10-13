@@ -191,7 +191,7 @@ None.
 
 | File | What it is |
 | --- | --- |
-| `site-kit/seed/collection.mjs` | The `docs` collection and `doc_category` taxonomy |
+| `site-kit/seed/collection.mjs` | The `docs` and `faq` collections (search on) and the `doc_category` taxonomy |
 | `site-kit/pages/docs/index.astro` | Help center home |
 | `site-kit/pages/docs/category/[...slug].astro` | Category page |
 | `site-kit/pages/docs/[...slug].astro` | Article page |

@@ -23,6 +23,47 @@ export async function openSite() {
 	return { rt, call, as, asGuest, dispose: () => rt.dispose() };
 }
 
+/** Add the KnowX docs and FAQ collections, with published articles when given. */
+export async function withDocs(
+	rt: Awaited<ReturnType<typeof openSite>>["rt"],
+	articles: Array<{ title: string; slug?: string; status?: string }> = [],
+) {
+	await rt.fixtures.collection({
+		slug: "docs",
+		label: "Help articles",
+		labelSingular: "Help article",
+		urlPattern: "/docs/{slug}",
+		supports: ["drafts", "revisions", "search", "seo"],
+		fields: [
+			{ slug: "title", label: "Title", type: "string", required: true, searchable: true },
+			{ slug: "excerpt", label: "Excerpt", type: "text", searchable: true },
+			{ slug: "content", label: "Content", type: "portableText", searchable: true },
+			{ slug: "applies_to_version", label: "Applies to version", type: "string" },
+		],
+	} as never);
+	await rt.fixtures.collection({
+		slug: "faq",
+		label: "FAQs",
+		labelSingular: "FAQ",
+		urlPattern: "/docs/faq/{slug}",
+		supports: ["drafts", "revisions", "search", "seo"],
+		fields: [
+			{ slug: "title", label: "Question", type: "string", required: true, searchable: true },
+			{ slug: "answer", label: "Answer", type: "portableText", searchable: true },
+		],
+	} as never);
+	const ids: string[] = [];
+	for (const article of articles) {
+		const made = await rt.fixtures.content("docs", {
+			data: { title: article.title },
+			slug: article.slug || article.title.toLowerCase().replace(/\s+/g, "-"),
+			status: article.status || "published",
+		} as never);
+		ids.push(made.id);
+	}
+	return { ids };
+}
+
 /** Add a posts collection with one public post and one draft. */
 export async function withPosts(rt: Awaited<ReturnType<typeof openSite>>["rt"]) {
 	await rt.fixtures.collection({

@@ -24,5 +24,10 @@ curl -sf -c "$JAR" -o /dev/null "$BASE/_emdash/api/setup/dev-bypass?redirect=/"
 ok "admin page loads"
 
 # plugin-specific checks go below this line
+HEALTH="$(json "$API/health")"
+echo "$HEALTH" | grep -q '"collectionExists":true' || fail "docs collection exists"
+echo "$HEALTH" | grep -q '"faqCollectionExists":true' || fail "faq collection exists"
+echo "$HEALTH" | grep -q '"articleCount":[1-9]' || fail "published article count"
+ok "collections and article count"
 
 echo "All checks passed for $SLUG"

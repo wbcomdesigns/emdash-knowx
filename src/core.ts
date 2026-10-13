@@ -2,6 +2,48 @@ import type { PluginContext } from "emdash/plugin";
 
 import { asRecord, asString } from "./util";
 
+export const DOCS = "docs";
+export const FAQ = "faq";
+export const DOC_CATEGORY = "doc_category";
+
+export async function articleCollection(ctx: PluginContext): Promise<string> {
+	return asString(await ctx.settings.get<string>("collection")) || DOCS;
+}
+
+async function publishedCount(ctx: PluginContext, collection: string): Promise<number> {
+	if (!ctx.content?.list) return 0;
+	let count = 0;
+	let cursor: string | undefined;
+	for (let page = 0; page < 20; page++) {
+		const result = await ctx.content
+			.list(collection, { limit: 100, cursor, where: { status: "published" } })
+			.catch(() => null);
+		if (!result) break;
+		count += result.items.length;
+		if (!result.hasMore || !result.cursor) break;
+		cursor = result.cursor;
+	}
+	return count;
+}
+
+export async function collectionStatus(ctx: PluginContext): Promise<{
+	collection: string;
+	collectionExists: boolean;
+	articleCount: number;
+	faqCollectionExists: boolean;
+}> {
+	const collection = await articleCollection(ctx);
+	const collections = (await ctx.schema?.listCollections()) ?? [];
+	const slugs = new Set(collections.map((item) => item.slug));
+	const collectionExists = slugs.has(collection);
+	return {
+		collection,
+		collectionExists,
+		articleCount: collectionExists ? await publishedCount(ctx, collection) : 0,
+		faqCollectionExists: slugs.has(FAQ),
+	};
+}
+
 // Lowest signed-in role (subscriber). Private routes get a host-verified routeCtx.user.
 // A public route never gets a user, and a member id in the request is never trusted.
 export const MEMBER = "content:read";

@@ -12,11 +12,11 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-Starter only. No plugin code yet. The brand kit, scope, plan and 17 tasks are ready.
+#1 is done on branch `0.1.0`. Docs and FAQ collections have search on. The lab seed has 8 articles in 3 categories plus 3 FAQs. `health` reports collection presence and the published article count. Insights shows that status. Lab: `../emdash-lab-knowx` on port 4333.
 
 ## Start with
 
-#1 (schema, the docs and faq collections with search turned on), #16 (Settings page), #13 (products).
+#16 (Settings page; prove `listCollections` first), then #13 (products).
 
 ## Prove before you build on it
 
