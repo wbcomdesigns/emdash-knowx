@@ -113,11 +113,9 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 											<span class="wb-muted">{kx.previous}</span>
 											<strong>{previous.data.title}</strong>
 										</a>
-									) : (
-										<span></span>
-									)}
+									) : null}
 									{next ? (
-										<a href={`${HELP_PATH}/${next.data.slug || next.id}`}>
+										<a class="kx-pager__next" href={`${HELP_PATH}/${next.data.slug || next.id}`}>
 											<span class="wb-muted">{kx.next}</span>
 											<strong>{next.data.title}</strong>
 										</a>

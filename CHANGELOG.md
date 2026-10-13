@@ -13,6 +13,7 @@ Copy `site-kit/` again after you update.
 - Fix      - The kit paints its own canvas in dark, so Topics and article body stay readable when the host page stays light.
 - Fix      - Article copy-link is an icon with a name, not a "Copy link" pill inside the heading.
 - Fix      - Missing-article page uses a heading. Article search uses the same card as home.
+- Fix      - Article pager no longer draws an empty card when there is only a Next or Previous link.
 
 ## [0.1.0] - 2026-10-14
 

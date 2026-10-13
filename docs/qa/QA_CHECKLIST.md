@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, independent presentation QA of 0.1.1 (`d368567`) against wp-card-qa + ux-foundation. Guest home, article, search (hits + empty), FAQ, category, 404 at 1440, 1024, 820, 390, light and dark. Verdict on #20: BOUNCE.
+**Last walk:** 2026-10-14, guest browser walk on lab :4333 after `ff1d21a` plus pager fix. Clicked topic, article, copy-link, Yes (thanks shown), kit LiveSearch (`Help article`), search page (`welcome`, 2 hits), empty search, FAQ (first open), 404 heading, dark home/article, 1024 home, 390 home/article. Registry JPEGs rewritten only after that walk.
 
 Walked in the browser as a guest this pass: G-7, G-10 (404 status + empty state), search hits/empty, FAQ, category, article chrome. Presentation matrix: 1440 then 1024/820 then 390, light and dark.
 
