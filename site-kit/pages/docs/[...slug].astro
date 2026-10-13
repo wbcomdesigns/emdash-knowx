@@ -1,0 +1,209 @@
+---
+import { decodeSlug, getEmDashCollection, getEmDashEntry, getSeoMeta, getSiteSettings } from "emdash";
+import { PortableText } from "emdash/ui";
+import DocSearch from "../../components/DocSearch.astro";
+import Helpful from "../../components/Helpful.astro";
+import Layout from "../../layouts/KnowXLayout.astro";
+import { formatSiteDate, headingsFrom, HELP_PATH, isoDate, jsonForScript, loadConfig, siteZone } from "../../lib/knowx";
+import { kx } from "../../lib/knowx-strings";
+import "../../styles/wbcom-base.css";
+import "../../styles/knowx.css";
+
+const slug = decodeSlug(Astro.params.slug);
+const config = await loadConfig(Astro.url.origin);
+const settings = await getSiteSettings();
+const zone = siteZone(settings?.timezone);
+const { entry, cacheHint } = slug ? await getEmDashEntry("docs", slug) : { entry: null, cacheHint: undefined };
+if (Astro.cache?.enabled && cacheHint) Astro.cache.set(cacheHint);
+
+if (!entry) {
+	Astro.response.status = 404;
+}
+
+const seo = entry
+	? getSeoMeta(entry, {
+			siteTitle: settings?.title || "Help",
+			siteUrl: Astro.url.origin,
+			path: Astro.url.pathname.replace(/\/$/, ""),
+		})
+	: { title: kx.notFoundTitle, description: kx.notFoundHint, canonical: null, ogTitle: kx.notFoundTitle, ogImage: null };
+
+const headings = headingsFrom(entry?.data.content);
+const showToc = headings.length >= 3;
+const version = String(entry?.data.applies_to_version || "").trim();
+const updated = formatSiteDate(entry?.data.updatedAt || entry?.data.publishedAt, zone, settings?.dateFormat);
+const category = (entry?.data.terms?.doc_category ?? [])[0];
+const { entries } = await getEmDashCollection("docs", { orderBy: { title: "asc" }, limit: 200 });
+const inCategory = category
+	? entries.filter((item) => (item.data.terms?.doc_category ?? []).some((term) => term.slug === category.slug))
+	: entries;
+const here = inCategory.findIndex((item) => item.data.id === entry?.data.id);
+const previous = here > 0 ? inCategory[here - 1] : null;
+const next = here >= 0 ? inCategory[here + 1] : null;
+const related = inCategory.filter((item) => item.data.id !== entry?.data.id).slice(0, 3);
+const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, copyCode: kx.copyCode, copiedCode: kx.copiedCode });
+---
+
+<Layout
+	title={seo.title || kx.notFoundTitle}
+	pageTitle={seo.ogTitle || entry?.data.title}
+	description={seo.description}
+	canonical={seo.canonical}
+	image={seo.ogImage}
+	content={entry ? { collection: "docs", id: entry.data.id, slug } : undefined}
+>
+	<div class="wb kx">
+		<nav aria-label="Breadcrumb">
+			<ol class="kx-crumbs">
+				<li><a href={HELP_PATH}>{kx.breadcrumbHelp}</a></li>
+				{
+					category ? (
+						<li>
+							<span aria-hidden="true">/</span>
+							<a href={`${HELP_PATH}/category/${category.slug}`}>{category.label}</a>
+						</li>
+					) : null
+				}
+				{
+					entry ? (
+						<li>
+							<span aria-hidden="true">/</span>
+							<span>{entry.data.title}</span>
+						</li>
+					) : null
+				}
+			</ol>
+		</nav>
+		<DocSearch collections={config.searchCollections} />
+
+		{
+			!entry ? (
+				<div class="wb-empty">
+					<p>
+						<strong>{kx.notFoundTitle}</strong>
+					</p>
+					<p class="wb-muted">{kx.notFoundHint}</p>
+					<p>
+						<a class="wb-btn" href={HELP_PATH}>
+							{kx.backHome}
+						</a>
+					</p>
+				</div>
+			) : (
+				<div class="kx-layout">
+					<article class="kx-article">
+						<header class="kx-hero">
+							<h1>{entry.data.title}</h1>
+							<div class="kx-meta">
+								{updated ? (
+									<span>
+										{kx.lastUpdated} <time datetime={isoDate(entry.data.updatedAt || entry.data.publishedAt)}>{updated}</time>
+									</span>
+								) : null}
+								{version ? <span class="kx-badge">{kx.appliesTo} {version}</span> : null}
+							</div>
+						</header>
+						<div class="kx-body" data-kx-article>
+							<script type="application/json" data-kx-article-copy set:html={headingCopy}></script>
+							<PortableText value={entry.data.content} />
+						</div>
+						{
+							previous || next ? (
+								<nav class="kx-pager" aria-label="Articles">
+									{previous ? (
+										<a href={`${HELP_PATH}/${previous.data.slug || previous.id}`}>
+											<span class="wb-muted">{kx.previous}</span>
+											<strong>{previous.data.title}</strong>
+										</a>
+									) : (
+										<span></span>
+									)}
+									{next ? (
+										<a href={`${HELP_PATH}/${next.data.slug || next.id}`}>
+											<span class="wb-muted">{kx.next}</span>
+											<strong>{next.data.title}</strong>
+										</a>
+									) : null}
+								</nav>
+							) : null
+						}
+						{
+							related.length ? (
+								<section>
+									<h2>{kx.related}</h2>
+									<ul class="kx-list">
+										{related.map((item) => (
+											<li>
+												<a href={`${HELP_PATH}/${item.data.slug || item.id}`}>{item.data.title}</a>
+											</li>
+										))}
+									</ul>
+								</section>
+							) : null
+						}
+						<Helpful id={entry.data.id} />
+					</article>
+					{
+						showToc ? (
+							<aside class="kx-toc">
+								<h2>{kx.tocTitle}</h2>
+								<ol>
+									{headings.map((item) => (
+										<li>
+											<a href={`#${item.id}`}>{item.text}</a>
+										</li>
+									))}
+								</ol>
+							</aside>
+						) : null
+					}
+				</div>
+			)
+		}
+	</div>
+</Layout>
+
+<script>
+	function slug(text: string): string {
+		return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section";
+	}
+
+	document.querySelectorAll<HTMLElement>("[data-kx-article]").forEach((root) => {
+		let copy: Record<string, string> = {};
+		try {
+			copy = JSON.parse(root.querySelector("[data-kx-article-copy]")?.textContent || "{}");
+		} catch {
+			copy = {};
+		}
+		const used = new Map<string, number>();
+		root.querySelectorAll("h2, h3").forEach((heading) => {
+			if (heading.id) return;
+			const base = slug(heading.textContent || "");
+			const n = (used.get(base) || 0) + 1;
+			used.set(base, n);
+			heading.id = n === 1 ? base : `${base}-${n}`;
+			const btn = document.createElement("button");
+			btn.type = "button";
+			btn.className = "kx-heading-tools";
+			btn.textContent = copy.copy || "Copy";
+			btn.addEventListener("click", async () => {
+				const url = `${location.origin}${location.pathname}#${heading.id}`;
+				await navigator.clipboard.writeText(url).catch(() => {});
+				btn.textContent = copy.copied || "Copied";
+			});
+			heading.append(btn);
+		});
+		root.querySelectorAll("pre").forEach((block) => {
+			block.classList.add("kx-pre");
+			const btn = document.createElement("button");
+			btn.type = "button";
+			btn.className = "kx-copy-code";
+			btn.textContent = copy.copyCode || "Copy";
+			btn.addEventListener("click", async () => {
+				await navigator.clipboard.writeText(block.textContent || "").catch(() => {});
+				btn.textContent = copy.copiedCode || "Copied";
+			});
+			block.append(btn);
+		});
+	});
+</script>

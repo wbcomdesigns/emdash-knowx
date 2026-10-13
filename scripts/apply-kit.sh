@@ -9,6 +9,18 @@ for part in lib styles components pages; do
 	mkdir -p "$LAB/src/$part"
 	cp -R "$PLUGIN/site-kit/$part/." "$LAB/src/$part/"
 done
+# The owner points this file at their own layout, so never overwrite it.
+if [[ -d "$PLUGIN/site-kit/layouts" ]]; then
+	mkdir -p "$LAB/src/layouts"
+	for file in "$PLUGIN/site-kit/layouts"/*; do
+		[[ -f "$file" ]] || continue
+		dest="$LAB/src/layouts/$(basename "$file")"
+		if [[ "$(basename "$file")" == *Layout.astro && -f "$dest" ]]; then
+			continue
+		fi
+		cp "$file" "$dest"
+	done
+fi
 # Lab-only pages that mount the components for a browser walk.
 if [[ -d "$PLUGIN/site-kit/lab" ]]; then
 	mkdir -p "$LAB/src/pages"

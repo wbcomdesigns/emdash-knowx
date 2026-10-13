@@ -1,0 +1,117 @@
+---
+import { decodeSlug, getEmDashCollection, getTaxonomyTerms } from "emdash";
+import DocSearch from "../../../components/DocSearch.astro";
+import Layout from "../../../layouts/KnowXLayout.astro";
+import { HELP_PATH, loadConfig } from "../../../lib/knowx";
+import { kx } from "../../../lib/knowx-strings";
+import "../../../styles/wbcom-base.css";
+import "../../../styles/knowx.css";
+
+type Term = { slug: string; label: string; description?: string; parentId?: string; children: Term[]; count?: number };
+
+const raw = decodeSlug(Astro.params.slug) || "";
+const slugs = raw.split("/").filter(Boolean);
+const leaf = slugs[slugs.length - 1];
+const config = await loadConfig(Astro.url.origin);
+const terms = (await getTaxonomyTerms("doc_category").catch(() => [])) as Term[];
+
+const flatten = (items: Term[], trail: Term[] = []): Array<{ term: Term; trail: Term[] }> =>
+	items.flatMap((term) => [{ term, trail }, ...flatten(term.children || [], [...trail, term])]);
+const found = flatten(terms).find((item) => item.term.slug === leaf);
+
+if (!found) {
+	Astro.response.status = 404;
+}
+
+const term = found?.term;
+const trail = found?.trail ?? [];
+const { entries, cacheHint } = await getEmDashCollection("docs", {
+	orderBy: { title: "asc" },
+	limit: 200,
+	where: leaf ? { doc_category: leaf } : undefined,
+});
+if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
+
+const children = term?.children ?? [];
+---
+
+<Layout title={term?.label || kx.notFoundTitle} description={term?.description || kx.homeLead}>
+	<div class="wb kx">
+		<nav aria-label="Breadcrumb">
+			<ol class="kx-crumbs">
+				<li><a href={HELP_PATH}>{kx.breadcrumbHelp}</a></li>
+				{
+					trail.map((item) => (
+						<li>
+							<span aria-hidden="true">/</span>
+							<a href={`${HELP_PATH}/category/${item.slug}`}>{item.label}</a>
+						</li>
+					))
+				}
+				{
+					term ? (
+						<li>
+							<span aria-hidden="true">/</span>
+							<span>{term.label}</span>
+						</li>
+					) : null
+				}
+			</ol>
+		</nav>
+		<header class="kx-hero">
+			<h1>{term?.label || kx.notFoundTitle}</h1>
+			{term?.description ? <p>{term.description}</p> : null}
+			<DocSearch collections={config.searchCollections} />
+		</header>
+
+		{
+			!term ? (
+				<div class="wb-empty">
+					<p>
+						<strong>{kx.notFoundTitle}</strong>
+					</p>
+					<p class="wb-muted">{kx.emptyCategoryHint}</p>
+					<p>
+						<a class="wb-btn" href={HELP_PATH}>
+							{kx.backHome}
+						</a>
+					</p>
+				</div>
+			) : (
+				<>
+					{children.length ? (
+						<ul class="kx-list">
+							{children.map((child) => (
+								<li>
+									<a class="wb-item" href={`${HELP_PATH}/category/${[...slugs, child.slug].join("/")}`}>
+										<strong>{child.label}</strong>
+										<span class="wb-muted">{kx.articlesCount(child.count || 0)}</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					) : null}
+					{entries.length ? (
+						<ul class="kx-list">
+							{entries.map((entry) => (
+								<li>
+									<a class="wb-item" href={`${HELP_PATH}/${entry.data.slug || entry.id}`}>
+										<strong>{entry.data.title}</strong>
+										{entry.data.excerpt ? <span class="wb-muted">{entry.data.excerpt}</span> : null}
+									</a>
+								</li>
+							))}
+						</ul>
+					) : (
+						<div class="wb-empty">
+							<p>
+								<strong>{kx.emptyCategoryTitle}</strong>
+							</p>
+							<p class="wb-muted">{kx.emptyCategoryHint}</p>
+						</div>
+					)}
+				</>
+			)
+		}
+	</div>
+</Layout>

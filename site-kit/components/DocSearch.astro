@@ -1,0 +1,43 @@
+---
+import LiveSearch from "emdash/ui/search";
+import { HELP_PATH, SEARCH_ROUTES } from "../lib/knowx";
+import { kx } from "../lib/knowx-strings";
+import "../styles/wbcom-base.css";
+import "../styles/knowx.css";
+
+interface Props {
+	collections?: string[];
+	autofocus?: boolean;
+}
+
+const { collections = ["docs"], autofocus = false } = Astro.props;
+---
+
+<div class="wb kx-search" data-kx-search>
+	<LiveSearch
+		placeholder={kx.searchPlaceholder}
+		collections={collections}
+		autofocus={autofocus}
+		debounce={300}
+		minChars={2}
+		searchPage={`${HELP_PATH}/search`}
+		routeMap={SEARCH_ROUTES}
+		inputClass="wb-input"
+	>
+		<span slot="loading">{kx.searchLoading}</span>
+		<span slot="no-results">{kx.searchNone}</span>
+	</LiveSearch>
+</div>
+
+<script>
+	function focusSearch() {
+		document.querySelector<HTMLInputElement>("[data-kx-search] .emdash-live-search-input")?.focus();
+	}
+
+	document.addEventListener("keydown", (event) => {
+		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+			event.preventDefault();
+			focusSearch();
+		}
+	});
+</script>

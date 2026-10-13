@@ -12,11 +12,11 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-#1, #16 and #13 are done on branch `0.1.0`. Docs and FAQ collections have search on. Settings covers contact, comment-after-No, search types, and product icons. `taxonomies:read` was added with the owner so Settings can list category names. Lab: `../emdash-lab-knowx` on port 4333.
+#1, #16, #13, #2, #3 and the visitor kit (#4, #5, #6, #8, #10, #15, Insights tables) are on branch `0.1.0`. The local lab at `../emdash-lab-knowx` (port 4333) is a working help center: home, category, article, search, FAQ, votes, search log, and Insights. LiveSearch cannot report the typed query, so the log is the search page only.
 
 ## Start with
 
-#2 (search log only, not a search route), then #3 (Was this helpful).
+A real browser walk of the QA checklist (1440 and 390, light and dark), then the remaining 0.1.0 cards: #9 (search across the owner's chosen content), #11 (owner docs), #12 (registry branding), #14 leftovers if any, #17 (trusted in-text block, prove first).
 
 ## Prove before you build on it
 

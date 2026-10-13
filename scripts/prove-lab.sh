@@ -36,4 +36,34 @@ echo "$PRODUCTS" | grep -q '"productLayer":true' || fail "product layer for thre
 echo "$PRODUCTS" | grep -q 'Getting started' || fail "product names"
 ok "products"
 
+CONFIG="$(json "$API/config")"
+echo "$CONFIG" | grep -q '"ok":true' || fail "config"
+echo "$CONFIG" | grep -q 'searchCollections' || fail "config search collections"
+ok "config"
+
+LOG="$(json -X POST -H 'Content-Type: application/json' -d '{"q":"welcome","found":1}' "$API/log_search")"
+echo "$LOG" | grep -q '"ok":true' || fail "log_search"
+ok "log_search"
+
+DOC_ID="$(curl -sf "$BASE/docs/welcome-to-the-help-center" | sed -n 's/.*data-kx-helpful data-id="\([^"]*\)".*/\1/p' | head -n 1)"
+[[ -n "$DOC_ID" ]] || fail "article page is missing the helpful widget"
+HELPFUL="$(json -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$DOC_ID\",\"helpful\":false,\"comment\":\"Need more steps\",\"vid\":\"prove-1\"}" "$API/helpful")"
+echo "$HELPFUL" | grep -q '"ok":true' || fail "helpful"
+echo "$HELPFUL" | grep -q '"no":1' || fail "helpful tally"
+ok "helpful"
+INSIGHTS="$(json -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/insights"}' "$API/admin")"
+echo "$INSIGHTS" | grep -q 'Need more steps' || fail "insights comment"
+echo "$INSIGHTS" | grep -qi 'Welcome' || fail "insights article name"
+ok "insights after a vote and a search"
+
+for path in /docs /docs/search /docs/faq /docs/category/getting-started /docs/welcome-to-the-help-center; do
+	code="$(curl -s -o /dev/null -w "%{http_code}" "$BASE$path")"
+	[[ "$code" == "200" ]] || fail "page $path returned $code"
+done
+ok "help pages"
+
+MISSING="$(curl -s -o /dev/null -w "%{http_code}" "$BASE/docs/this-article-is-not-here")"
+[[ "$MISSING" == "404" ]] || fail "missing article should be 404, got $MISSING"
+ok "missing article is 404"
+
 echo "All checks passed for $SLUG"

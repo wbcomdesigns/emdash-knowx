@@ -1,6 +1,6 @@
 import type { PluginContext } from "emdash/plugin";
 
-import { collectionStatus } from "./core";
+import { articleCollection, collectionStatus, entryRef } from "./core";
 import { listTopLevelCategories, PRODUCT_ICONS, saveProductIcon, useProductLayer } from "./products";
 import {
 	listContentTypes,
@@ -41,6 +41,7 @@ export async function renderInsights(
 			? "The help collection is ready. No published articles yet."
 			: `${status.articleCount} published help ${status.articleCount === 1 ? "article" : "articles"}.`;
 
+	const reports = await insightTables(ctx);
 	return {
 		blocks: [
 			{ type: "header", text: "Insights" },
@@ -51,14 +52,104 @@ export async function renderInsights(
 					? "The FAQ collection is ready."
 					: "The FAQ collection is not set up yet.",
 			},
-			{
-				type: "empty",
-				title: "No reports yet",
-				description: "Helpfulness and search reports appear here after readers use the help center.",
-			},
+			...reports,
 		],
 		toast: extra?.toast,
 	};
+}
+
+async function insightTables(ctx: PluginContext): Promise<Array<Record<string, unknown>>> {
+	const blocks: Array<Record<string, unknown>> = [];
+	const collection = await articleCollection(ctx);
+	const titles = new Map<string, string>();
+	const titleOf = async (doc: string) => {
+		const cached = titles.get(doc);
+		if (cached) return cached;
+		const title = (await entryRef(ctx, collection, doc).catch(() => null))?.title || "Help article";
+		titles.set(doc, title);
+		return title;
+	};
+
+	try {
+		const votes = await ctx.storage.feedback.query({ limit: 200, orderBy: { createdAt: "desc" } });
+		const byDoc = new Map<string, { yes: number; no: number }>();
+		const comments: Array<{ article: string; comment: string }> = [];
+		for (const item of votes.items) {
+			try {
+				const row = asRecord(item.data);
+				const doc = asString(row.doc) || item.id.split(":")[0];
+				const bucket = byDoc.get(doc) || { yes: 0, no: 0 };
+				if (row.helpful === true) bucket.yes += 1;
+				else bucket.no += 1;
+				byDoc.set(doc, bucket);
+				const comment = asString(row.comment);
+				if (comment) comments.push({ article: await titleOf(doc), comment });
+			} catch {
+				/* one bad row must not hide the page */
+			}
+		}
+		const weakRows = [];
+		for (const [doc, n] of [...byDoc.entries()]
+			.filter(([, v]) => v.no > v.yes)
+			.sort(([, a], [, b]) => b.no - a.no)
+			.slice(0, 10)) {
+			try {
+				weakRows.push({ article: await titleOf(doc), no: String(n.no), yes: String(n.yes) });
+			} catch {
+				weakRows.push({ article: "Help article", no: String(n.no), yes: String(n.yes) });
+			}
+		}
+		blocks.push({ type: "header", text: "Least helpful articles" });
+		blocks.push(
+			weakRows.length
+				? { type: "table", page_action_id: "weak_page", columns: cols("article", "no", "yes"), rows: weakRows }
+				: { type: "empty", title: "No weak articles yet", description: "A No vote that outnumbers Yes will show here." },
+		);
+		blocks.push({ type: "header", text: "Recent comments" });
+		blocks.push(
+			comments.length
+				? { type: "table", page_action_id: "comments_page", columns: cols("article", "comment"), rows: comments.slice(0, 20) }
+				: { type: "empty", title: "No comments yet", description: "Comments after a No vote show here as plain text." },
+		);
+	} catch {
+		blocks.push({ type: "empty", title: "Helpfulness could not be loaded", description: "Try again in a moment." });
+	}
+
+	try {
+		const searches = await ctx.storage.searches.query({ limit: 50, orderBy: { count: "desc" } });
+		const top = searches.items.map((item) => {
+			const row = asRecord(item.data);
+			return { term: asString(row.term) || item.id, times: String(row.count ?? 0) };
+		});
+		const empty = searches.items
+			.filter((item) => asRecord(item.data).found === false)
+			.map((item) => {
+				const row = asRecord(item.data);
+				return { term: asString(row.term) || item.id, times: String(row.count ?? 0) };
+			});
+		blocks.push({ type: "header", text: "Top searches" });
+		blocks.push(
+			top.length
+				? { type: "table", page_action_id: "top_page", columns: cols("term", "times"), rows: top }
+				: { type: "empty", title: "No searches yet", description: "Terms from the help search page show here." },
+		);
+		blocks.push({ type: "header", text: "Searches with no results" });
+		blocks.push(
+			empty.length
+				? { type: "table", page_action_id: "empty_page", columns: cols("term", "times"), rows: empty }
+				: { type: "empty", title: "No empty searches yet", description: "A search that found nothing shows here." },
+		);
+	} catch {
+		blocks.push({ type: "empty", title: "Search log could not be loaded", description: "Try again in a moment." });
+	}
+	return blocks;
+}
+
+function cols(...keys: string[]) {
+	return keys.map((key) => ({
+		key,
+		label: key === "no" ? "No" : key === "yes" ? "Yes" : key[0].toUpperCase() + key.slice(1),
+	}));
 }
 
 export async function renderSettings(

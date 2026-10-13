@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** not walked yet.
+**Last walk:** 2026-10-14, 0.1.0 on the local lab (port 4333). HTTP and route walk: help home, category, article (TOC, previous/next, helpful widget, version badge), search results, FAQ, missing article 404, contact panel after a no-result search, Insights after a vote and a logged search, Settings refusing a javascript: contact link. Not walked in a real browser at 1440/390 or in dark mode. LiveSearch as-you-type, keyboard, and member-role cases not walked.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 

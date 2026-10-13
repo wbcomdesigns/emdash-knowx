@@ -3,7 +3,7 @@ import type { SandboxedPlugin } from "emdash/plugin";
 import { handleAdmin } from "./admin";
 import { collectionStatus } from "./core";
 import { pageMetadata } from "./metadata";
-import { listTopLevelCategories, useProductLayer } from "./products";
+import { handleConfig, handleHelpful, handleLogSearch, handleProducts, handleTally } from "./public";
 
 const plugin: SandboxedPlugin = {
 	hooks: {
@@ -26,13 +26,19 @@ const plugin: SandboxedPlugin = {
 				};
 			},
 		},
-		products: {
+		config: { public: true, handler: async (_routeCtx, ctx) => handleConfig(ctx) },
+		products: { public: true, handler: async (_routeCtx, ctx) => handleProducts(ctx) },
+		log_search: {
 			public: true,
-			handler: async (_routeCtx, ctx) => {
-				const items = await listTopLevelCategories(ctx);
-				return { ok: true, items, productLayer: useProductLayer(items) };
-			},
+			methods: ["POST"],
+			handler: async (routeCtx, ctx) => handleLogSearch(routeCtx, ctx),
 		},
+		helpful: {
+			public: true,
+			methods: ["POST"],
+			handler: async (routeCtx, ctx) => handleHelpful(routeCtx, ctx),
+		},
+		tally: { public: true, handler: async (routeCtx, ctx) => handleTally(routeCtx, ctx) },
 		admin: {
 			handler: async (routeCtx, ctx) => handleAdmin(routeCtx.input, ctx),
 		},

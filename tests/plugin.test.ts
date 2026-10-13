@@ -82,7 +82,8 @@ describe("admin insights", () => {
 		const body = texts(page);
 		expect(body).toMatch(/1 published help article/);
 		expect(body).toMatch(/FAQ collection is ready/);
-		expect(body).toMatch(/No reports yet/);
+		expect(body).toMatch(/No weak articles yet/);
+		expect(body).toMatch(/No searches yet/);
 	});
 });
 
@@ -214,5 +215,71 @@ describe("products", () => {
 			values: { [`icon__${one.terms[0].id}`]: "<script>alert(1)</script>" },
 		});
 		expect(refused).toMatchObject({ toast: { type: "error" } });
+	});
+});
+
+describe("config", () => {
+	it("returns contact, comment and search coverage without term ids", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		expect(await site.call("config")).toMatchObject({
+			ok: true,
+			searchCollections: ["docs"],
+			askComment: true,
+			contactUrl: "",
+		});
+		await site.call("admin", {
+			type: "form_submit",
+			action_id: "save_contact",
+			page: "/settings",
+			values: { contact_url: "/contact" },
+		});
+		expect(await site.call("config")).toMatchObject({ ok: true, contactUrl: "/contact" });
+	});
+});
+
+describe("search log", () => {
+	it("counts a term, skips an email and a honeypot, and lists them on Insights", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		expect(await site.call("log_search", { q: "billing plan", found: 2, vid: "v1" })).toMatchObject({ ok: true });
+		expect(await site.call("log_search", { q: "billing plan", found: 0, vid: "v1" })).toMatchObject({ ok: true });
+		expect(await site.call("log_search", { q: "help@example.com", found: 0, vid: "v1" })).toMatchObject({ ok: true });
+		expect(await site.call("log_search", { q: "secret-spam", found: 0, website: "http://x", vid: "v1" })).toMatchObject({
+			ok: true,
+		});
+		const page = JSON.stringify(await site.rt.admin.loadPage("/insights"));
+		expect(page).toContain("billing plan");
+		expect(page).toContain('"times":"2"');
+		expect(page).not.toContain("help@example.com");
+		expect(page).not.toContain("secret-spam");
+	});
+});
+
+describe("helpful", () => {
+	it("saves one vote per visitor, moves it on a second click, and names the article on Insights", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		const missing = await site.call("helpful", { helpful: true, vid: "v1" });
+		expect(missing).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+		const gone = await site.call("helpful", { id: "missing", helpful: true, vid: "v1" });
+		expect(gone).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+
+		const yes = await site.call("helpful", { id: ids[0], helpful: true, vid: "v1" });
+		expect(yes).toMatchObject({ ok: true, yes: 1, no: 0 });
+		const flipped = await site.call("helpful", { id: ids[0], helpful: false, comment: "Missing steps", vid: "v1" });
+		expect(flipped).toMatchObject({ ok: true, yes: 0, no: 1 });
+		const other = await site.call("helpful", { id: ids[0], helpful: false, comment: "Still unclear", vid: "v2" });
+		expect(other).toMatchObject({ ok: true, yes: 0, no: 2 });
+		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ ok: true, yes: 0, no: 2 });
+
+		const page = JSON.stringify(await site.rt.admin.loadPage("/insights"));
+		expect(page).toContain("Welcome");
+		expect(page).toContain("Still unclear");
+		expect(page).toContain("Missing steps");
+		expect(page).not.toContain(ids[0]);
 	});
 });
