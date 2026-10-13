@@ -2,7 +2,13 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.0 on the local lab (port 4333). HTTP and route walk: help home, category, article (TOC, previous/next, helpful widget, version badge), search results, FAQ, missing article 404, contact panel after a no-result search, Insights after a vote and a logged search, Settings refusing a javascript: contact link. Not walked in a real browser at 1440/390 or in dark mode. LiveSearch as-you-type, keyboard, and member-role cases not walked.
+**Last walk:** 2026-10-14, 0.1.0, isolated Chromium on the local lab (port 4333). Builder walk (not an independent QA verdict).
+
+Walked in the browser as a guest: G-1, G-2, G-3, G-4, G-5, G-6, G-7, G-9, G-10, G-11, G-13, FAQ, version badge, LiveSearch as you type. Walked as admin: A-2, A-3, A-5, Settings (contact, search types). Presentation: 1440, 1024, 390; kit surfaces in dark. Copy-link tap targets and LiveSearch leftover "Searching / no results" text were found and fixed in the same pass.
+
+Not walked: G-8 nested category (seed has none), G-12 JS actually off, G-92 wording rebuild, A-1 empty Insights (lab already had votes), A-4 (collection setting is not on the Settings screen), M-1 subscriber role, P-5 full tab order, P-8 two-visitor source compare.
+
+Known gaps after the walk: LiveSearch still prints collection slugs (DOCS, POSTS). Kit cards follow dark mode; the starter site chrome stays light.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -69,4 +75,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 ## Known gaps
 
-None recorded yet. List anything a release ships without, here, in plain words.
+- LiveSearch dropdown shows collection slugs (`DOCS`, `POSTS`) instead of names. The results page labels them correctly.
+- Kit cards follow the system dark setting. The starter site header and page background stay light.
+- The seed has no nested help category, so G-8 is only a top-level category walk.
+- The collection setting is internal. A-4 cannot be done from the Settings screen.

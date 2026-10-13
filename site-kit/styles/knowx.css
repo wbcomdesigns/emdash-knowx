@@ -1,6 +1,7 @@
 /* KnowX help center layout. Colours follow the site through the shared wb tokens. */
 .kx {
 	--kx-gold: var(--wb-brand, light-dark(#b45309, #e6c35c));
+	color-scheme: light dark;
 	display: grid;
 	gap: 1.5rem;
 	max-width: 52rem;
@@ -134,13 +135,12 @@
 	scroll-margin-top: 4.5rem;
 }
 
-.kx-heading-tools {
-	display: inline-flex;
-	margin-inline-start: 0.35rem;
-}
-
-.kx-heading-tools button,
+.kx-heading-tools,
 .kx-copy-code {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-inline-start: 0.35rem;
 	min-height: var(--wb-tap);
 	min-width: var(--wb-tap);
 	padding: 0 0.6rem;

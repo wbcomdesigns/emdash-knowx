@@ -24,8 +24,8 @@ const { collections = ["docs"], autofocus = false } = Astro.props;
 		routeMap={SEARCH_ROUTES}
 		inputClass="wb-input"
 	>
-		<span slot="loading">{kx.searchLoading}</span>
-		<span slot="no-results">{kx.searchNone}</span>
+		<div slot="loading" class="emdash-live-search-loading">{kx.searchLoading}</div>
+		<div slot="no-results" class="emdash-live-search-no-results">{kx.searchNone}</div>
 	</LiveSearch>
 </div>
 
