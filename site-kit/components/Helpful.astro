@@ -1,0 +1,126 @@
+---
+/**
+ * Was-this-helpful vote. Markup is the same for every visitor so the page can stay cached.
+ * Counts and the comment box load in the browser.
+ */
+import { jsonForScript } from "../lib/knowx";
+import { kx } from "../lib/knowx-strings";
+import "../styles/wbcom-base.css";
+import "../styles/knowx.css";
+
+interface Props {
+	id: string;
+}
+
+const { id } = Astro.props;
+const copy = jsonForScript({
+	yes: kx.helpfulYes,
+	no: kx.helpfulNo,
+	thanks: kx.helpfulThanks,
+	commentLabel: kx.helpfulCommentLabel,
+	commentHint: kx.helpfulCommentHint,
+	commentSend: kx.helpfulCommentSend,
+	error: kx.helpfulError,
+	stillTitle: kx.stillNeedTitle,
+	stillBody: kx.stillNeedBody,
+	stillButton: kx.stillNeedButton,
+	question: kx.helpfulQuestion,
+});
+---
+
+<section class="wb wb-card" data-kx-helpful data-id={id} aria-labelledby="kx-helpful-h">
+	<script type="application/json" data-kx-helpful-copy set:html={copy}></script>
+	<h2 id="kx-helpful-h">{kx.helpfulQuestion}</h2>
+	<p class="wb-sr" data-kx-tally hidden></p>
+	<div class="wb-summary">
+		<button class="wb-btn" type="button" data-kx-vote="yes">{kx.helpfulYes}</button>
+		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="no">{kx.helpfulNo}</button>
+	</div>
+	<form data-kx-comment hidden>
+		<label class="wb-label" for={`kx-comment-${id}`}>{kx.helpfulCommentLabel}</label>
+		<textarea class="wb-input" id={`kx-comment-${id}`} name="comment" maxlength="500"></textarea>
+		<p class="wb-muted">{kx.helpfulCommentHint}</p>
+		<button class="wb-btn" type="submit">{kx.helpfulCommentSend}</button>
+	</form>
+	<p class="wb-status" data-kx-status role="status" hidden></p>
+	<aside data-kx-contact hidden>
+		<h3>{kx.stillNeedTitle}</h3>
+		<p class="wb-muted">{kx.stillNeedBody}</p>
+		<p>
+			<a class="wb-btn" data-kx-contact-link href="#">{kx.stillNeedButton}</a>
+		</p>
+	</aside>
+</section>
+
+<script>
+	import { api } from "../lib/wbcom-kit";
+	import { phrase } from "../lib/knowx-strings";
+
+	const VID = "knowx_vid";
+
+	function visitorId(): string {
+		const found = document.cookie.match(/(?:^|; )knowx_vid=([^;]+)/);
+		if (found?.[1]) return decodeURIComponent(found[1]);
+		const id = crypto.randomUUID();
+		document.cookie = `${VID}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+		return id;
+	}
+
+	function copyOf(root: HTMLElement) {
+		try {
+			return JSON.parse(root.querySelector("[data-kx-helpful-copy]")?.textContent || "{}") as Record<string, string>;
+		} catch {
+			return {};
+		}
+	}
+
+	async function tally(root: HTMLElement, id: string) {
+		const data = await api("knowx", `tally?id=${encodeURIComponent(id)}`);
+		const box = root.querySelector<HTMLElement>("[data-kx-tally]");
+		if (box && data.ok) {
+			box.hidden = false;
+			box.textContent = `${Number(data.yes) || 0} / ${Number(data.no) || 0}`;
+		}
+	}
+
+	document.querySelectorAll<HTMLElement>("[data-kx-helpful]").forEach(async (root) => {
+		const id = root.dataset.id || "";
+		const copy = copyOf(root);
+		const status = root.querySelector<HTMLElement>("[data-kx-status]");
+		const commentForm = root.querySelector<HTMLFormElement>("[data-kx-comment]");
+		const contact = root.querySelector<HTMLElement>("[data-kx-contact]");
+		const contactLink = root.querySelector<HTMLAnchorElement>("[data-kx-contact-link]");
+		const config = await api("knowx", "config");
+		const askComment = config.askComment !== false;
+		const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
+		if (contactLink && contactUrl) contactLink.href = contactUrl;
+		await tally(root, id);
+
+		const vote = async (helpful: boolean, comment = "") => {
+			if (!status) return;
+			const result = await api("knowx", "helpful", { id, helpful, comment, vid: visitorId() });
+			status.hidden = false;
+			if (!result.ok) {
+				status.dataset.tone = "error";
+				status.textContent = phrase(result.error?.code);
+				return;
+			}
+			status.dataset.tone = "success";
+			status.textContent = copy.thanks || "";
+			if (commentForm) commentForm.hidden = helpful || !askComment;
+			if (contact) contact.hidden = helpful || !contactUrl;
+			await tally(root, id);
+		};
+
+		root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]").forEach((button) => {
+			button.addEventListener("click", () => vote(button.dataset.kxVote === "yes"));
+		});
+
+		commentForm?.addEventListener("submit", (event) => {
+			event.preventDefault();
+			const text = String(new FormData(commentForm).get("comment") || "");
+			vote(false, text);
+		});
+
+	});
+</script>

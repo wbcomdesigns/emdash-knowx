@@ -23,6 +23,73 @@ export async function openSite() {
 	return { rt, call, as, asGuest, dispose: () => rt.dispose() };
 }
 
+/** Add the KnowX docs and FAQ collections, with published articles when given. */
+export async function withDocs(
+	rt: Awaited<ReturnType<typeof openSite>>["rt"],
+	articles: Array<{ title: string; slug?: string; status?: string }> = [],
+) {
+	await rt.fixtures.collection({
+		slug: "docs",
+		label: "Help articles",
+		labelSingular: "Help article",
+		urlPattern: "/docs/{slug}",
+		supports: ["drafts", "revisions", "search", "seo"],
+		fields: [
+			{ slug: "title", label: "Title", type: "string", required: true, searchable: true },
+			{ slug: "excerpt", label: "Excerpt", type: "text", searchable: true },
+			{ slug: "content", label: "Content", type: "portableText", searchable: true },
+			{ slug: "applies_to_version", label: "Applies to version", type: "string" },
+		],
+	} as never);
+	await rt.fixtures.collection({
+		slug: "faq",
+		label: "FAQs",
+		labelSingular: "FAQ",
+		urlPattern: "/docs/faq/{slug}",
+		supports: ["drafts", "revisions", "search", "seo"],
+		fields: [
+			{ slug: "title", label: "Question", type: "string", required: true, searchable: true },
+			{ slug: "answer", label: "Answer", type: "portableText", searchable: true },
+		],
+	} as never);
+	const ids: string[] = [];
+	for (const article of articles) {
+		const made = await rt.fixtures.content("docs", {
+			data: { title: article.title },
+			slug: article.slug || article.title.toLowerCase().replace(/\s+/g, "-"),
+			status: article.status || "published",
+		} as never);
+		ids.push(made.id);
+	}
+	return { ids };
+}
+
+/** Add the help category taxonomy and the given top-level terms. */
+export async function withCategories(
+	rt: Awaited<ReturnType<typeof openSite>>["rt"],
+	terms: Array<{ slug: string; label: string; description?: string }>,
+) {
+	await rt.fixtures.taxonomyDefinition({
+		name: "doc_category",
+		label: "Help categories",
+		labelSingular: "Help category",
+		hierarchical: true,
+		collections: ["docs"],
+	});
+	const created = [];
+	for (const term of terms) {
+		created.push(
+			await rt.fixtures.taxonomy({
+				name: "doc_category",
+				slug: term.slug,
+				label: term.label,
+				data: term.description ? { description: term.description } : {},
+			}),
+		);
+	}
+	return { terms: created };
+}
+
 /** Add a posts collection with one public post and one draft. */
 export async function withPosts(rt: Awaited<ReturnType<typeof openSite>>["rt"]) {
 	await rt.fixtures.collection({
@@ -30,7 +97,7 @@ export async function withPosts(rt: Awaited<ReturnType<typeof openSite>>["rt"]) 
 		label: "Posts",
 		labelSingular: "Post",
 		urlPattern: "/posts/{slug}",
-		supports: ["drafts", "revisions"],
+		supports: ["drafts", "revisions", "search"],
 		fields: [{ slug: "title", label: "Title", type: "string", required: true }],
 	} as never);
 	const live = await rt.fixtures.content("posts", { data: { title: "Good Soup" }, slug: "good-soup", status: "published" } as never);

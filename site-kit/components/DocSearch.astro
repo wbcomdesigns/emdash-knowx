@@ -1,0 +1,66 @@
+---
+import LiveSearch from "emdash/ui/search";
+import { HELP_PATH, SEARCH_ROUTES } from "../lib/knowx";
+import { kx } from "../lib/knowx-strings";
+import "../styles/wbcom-base.css";
+import "../styles/knowx.css";
+
+interface Props {
+	collections?: string[];
+	autofocus?: boolean;
+}
+
+const { collections = ["docs"], autofocus = false } = Astro.props;
+---
+
+<div class="wb kx-search" data-kx-search>
+	<LiveSearch
+		placeholder={kx.searchPlaceholder}
+		collections={collections}
+		autofocus={autofocus}
+		debounce={300}
+		minChars={2}
+		searchPage={`${HELP_PATH}/search`}
+		routeMap={SEARCH_ROUTES}
+		inputClass="wb-input"
+	>
+		<div slot="loading" class="emdash-live-search-loading">{kx.searchLoading}</div>
+		<div slot="no-results" class="emdash-live-search-no-results">{kx.searchNone}</div>
+	</LiveSearch>
+</div>
+
+<script>
+	import { kindLabel } from "../lib/knowx-strings";
+
+	function focusSearch() {
+		document.querySelector<HTMLInputElement>("[data-kx-search] .emdash-live-search-input")?.focus();
+	}
+
+	function relabel(root: ParentNode) {
+		root.querySelectorAll(".emdash-live-search-result-collection").forEach((el) => {
+			const node = el as HTMLElement;
+			const raw = (node.dataset.kxKind || node.textContent || "").trim();
+			if (!raw) return;
+			if (!node.dataset.kxKind) node.dataset.kxKind = raw;
+			node.textContent = kindLabel(raw);
+		});
+	}
+
+	function watchLabels() {
+		const box = document.querySelector("[data-kx-search]");
+		if (!box) return;
+		const list = box.querySelector(".emdash-live-search-results-list") || box;
+		relabel(list);
+		new MutationObserver(() => relabel(list)).observe(list, { childList: true });
+	}
+
+	document.addEventListener("keydown", (event) => {
+		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+			event.preventDefault();
+			focusSearch();
+		}
+	});
+
+	watchLabels();
+	document.addEventListener("astro:page-load", watchLabels);
+</script>

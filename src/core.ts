@@ -2,6 +2,48 @@ import type { PluginContext } from "emdash/plugin";
 
 import { asRecord, asString } from "./util";
 
+export const DOCS = "docs";
+export const FAQ = "faq";
+export const DOC_CATEGORY = "doc_category";
+
+export async function articleCollection(ctx: PluginContext): Promise<string> {
+	return asString(await ctx.settings.get<string>("collection")) || DOCS;
+}
+
+async function publishedCount(ctx: PluginContext, collection: string): Promise<number> {
+	if (!ctx.content?.list) return 0;
+	let count = 0;
+	let cursor: string | undefined;
+	for (let page = 0; page < 20; page++) {
+		const result = await ctx.content
+			.list(collection, { limit: 100, cursor, where: { status: "published" } })
+			.catch(() => null);
+		if (!result) break;
+		count += result.items.length;
+		if (!result.hasMore || !result.cursor) break;
+		cursor = result.cursor;
+	}
+	return count;
+}
+
+export async function collectionStatus(ctx: PluginContext): Promise<{
+	collection: string;
+	collectionExists: boolean;
+	articleCount: number;
+	faqCollectionExists: boolean;
+}> {
+	const collection = await articleCollection(ctx);
+	const collections = (await ctx.schema?.listCollections()) ?? [];
+	const slugs = new Set(collections.map((item) => item.slug));
+	const collectionExists = slugs.has(collection);
+	return {
+		collection,
+		collectionExists,
+		articleCount: collectionExists ? await publishedCount(ctx, collection) : 0,
+		faqCollectionExists: slugs.has(FAQ),
+	};
+}
+
 // Lowest signed-in role (subscriber). Private routes get a host-verified routeCtx.user.
 // A public route never gets a user, and a member id in the request is never trusted.
 export const MEMBER = "content:read";
@@ -17,19 +59,19 @@ export const RATE_LIMITED = {
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 8;
 
-// ponytail: KV read-then-write is not atomic, so a burst of parallel requests can slip a few
-// past the cap. Fine for throttling abuse; move to a host rate-limit primitive if one ships.
 export async function rateLimited(ctx: PluginContext, who: string): Promise<boolean> {
+	if (!who) return false;
 	const key = `rate:${who}`;
-	const [start, count] = ((await ctx.kv.get<string>(key)) || "0|0").split("|").map(Number);
-	const now = Date.now();
-	if (now - start > RATE_WINDOW_MS) {
-		await ctx.kv.set(key, `${now}|1`);
-		return false;
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		const seen = await ctx.kv.getVersioned<string>(key);
+		const [start, count] = (seen?.value || "0|0").split("|").map(Number);
+		const now = Date.now();
+		const fresh = now - start > RATE_WINDOW_MS;
+		if (!fresh && count >= RATE_MAX) return true;
+		const next = fresh ? `${now}|1` : `${start}|${count + 1}`;
+		if ((await ctx.kv.compareAndSet(key, seen?.revision ?? null, next)).applied) return false;
 	}
-	if (count >= RATE_MAX) return true;
-	await ctx.kv.set(key, `${start}|${count + 1}`);
-	return false;
+	return true;
 }
 
 export type EntryRef = { title: string; url: string; published: boolean };

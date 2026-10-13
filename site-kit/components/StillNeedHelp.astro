@@ -1,0 +1,23 @@
+---
+import { kx } from "../lib/knowx-strings";
+
+interface Props {
+	href: string;
+}
+
+const { href } = Astro.props;
+---
+
+{
+	href ? (
+		<aside class="wb-card" data-kx-contact>
+			<h2>{kx.stillNeedTitle}</h2>
+			<p class="wb-muted">{kx.stillNeedBody}</p>
+			<p>
+				<a class="wb-btn" href={href}>
+					{kx.stillNeedButton}
+				</a>
+			</p>
+		</aside>
+	) : null
+}

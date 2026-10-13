@@ -1,0 +1,88 @@
+---
+import { getEmDashCollection, getTaxonomyTerms } from "emdash";
+import DocSearch from "../../components/DocSearch.astro";
+import Layout from "../../layouts/KnowXLayout.astro";
+import { loadConfig, loadProducts } from "../../lib/knowx";
+import { productIcon } from "../../lib/knowx-icons";
+import { kx } from "../../lib/knowx-strings";
+import { useProductLayer } from "../../lib/knowx-products";
+import "../../styles/wbcom-base.css";
+import "../../styles/knowx.css";
+
+const origin = Astro.url.origin;
+const [config, products, terms, docs] = await Promise.all([
+	loadConfig(origin),
+	loadProducts(origin),
+	getTaxonomyTerms("doc_category").catch(() => []),
+	getEmDashCollection("docs", { orderBy: { published_at: "desc" }, limit: 200 }),
+]);
+if (Astro.cache?.enabled) Astro.cache.set(docs.cacheHint);
+
+const top = terms.filter((term) => !term.parentId);
+const productLayer = products.productLayer || useProductLayer(top.length);
+const countFor = (slug: string) =>
+	top.find((term) => term.slug === slug)?.count ??
+	docs.entries.filter((entry) => (entry.data.terms?.doc_category ?? []).some((term) => term.slug === slug)).length;
+
+const cards = (products.items.length ? products.items : top.map((term) => ({
+	slug: term.slug,
+	label: term.label,
+	description: term.description || "",
+	icon: "book",
+}))).map((item) => ({ ...item, count: countFor(item.slug) }));
+
+const articles = docs.entries;
+---
+
+<Layout title={kx.homeTitle} description={kx.homeLead}>
+	<div class="wb kx">
+		<header class="kx-hero">
+			<h1>{kx.homeTitle}</h1>
+			<p>{kx.homeLead}</p>
+			<DocSearch collections={config.searchCollections} autofocus />
+		</header>
+
+		{
+			cards.length ? (
+				<section>
+					<h2 class="wb-sr">{kx.categoriesHeading}</h2>
+					<ul class={productLayer ? "kx-grid" : "kx-list"}>
+						{cards.map((item) => (
+							<li>
+								<a class={productLayer ? "kx-card" : "wb-item"} href={`/docs/category/${item.slug}`}>
+									{productLayer ? (
+										<svg class="kx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" set:html={productIcon(item.icon)} />
+									) : null}
+									<strong>{item.label}</strong>
+									{item.description ? <span class="wb-muted">{item.description}</span> : null}
+									<span class="wb-muted">{kx.articlesCount(item.count)}</span>
+								</a>
+							</li>
+						))}
+					</ul>
+				</section>
+			) : articles.length ? (
+				<section>
+					<h2>{kx.articlesHeading}</h2>
+					<ul class="kx-list">
+						{articles.map((entry) => (
+							<li>
+								<a class="wb-item" href={`/docs/${entry.data.slug || entry.id}`}>
+									<strong>{entry.data.title}</strong>
+									{entry.data.excerpt ? <span class="wb-muted">{entry.data.excerpt}</span> : null}
+								</a>
+							</li>
+						))}
+					</ul>
+				</section>
+			) : (
+				<div class="wb-empty">
+					<p>
+						<strong>{kx.emptyHomeTitle}</strong>
+					</p>
+					<p class="wb-muted">{kx.emptyHomeHint}</p>
+				</div>
+			)
+		}
+	</div>
+</Layout>

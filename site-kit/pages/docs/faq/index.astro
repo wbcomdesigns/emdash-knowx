@@ -1,0 +1,70 @@
+---
+import { getEmDashCollection } from "emdash";
+import { PortableText } from "emdash/ui";
+import DocSearch from "../../../components/DocSearch.astro";
+import Layout from "../../../layouts/KnowXLayout.astro";
+import { HELP_PATH, jsonForScript, loadConfig } from "../../../lib/knowx";
+import { kx } from "../../../lib/knowx-strings";
+import "../../../styles/wbcom-base.css";
+import "../../../styles/knowx.css";
+
+const config = await loadConfig(Astro.url.origin);
+const { entries, cacheHint } = await getEmDashCollection("faq", { orderBy: { title: "asc" }, limit: 200 });
+if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
+
+const schema = {
+	"@context": "https://schema.org",
+	"@type": "FAQPage",
+	mainEntity: entries.map((entry) => ({
+		"@type": "Question",
+		name: entry.data.title,
+		acceptedAnswer: {
+			"@type": "Answer",
+			text: Array.isArray(entry.data.answer)
+				? entry.data.answer
+						.flatMap((block: { children?: Array<{ text?: string }> }) => (block.children || []).map((child) => child.text || ""))
+						.join(" ")
+				: "",
+		},
+	})),
+};
+---
+
+<Layout title={kx.faqTitle} description={kx.faqLead}>
+	<script type="application/ld+json" set:html={jsonForScript(schema)} />
+	<div class="wb kx">
+		<nav aria-label="Breadcrumb">
+			<ol class="kx-crumbs">
+				<li><a href={HELP_PATH}>{kx.breadcrumbHelp}</a></li>
+				<li>
+					<span aria-hidden="true">/</span>
+					<span>{kx.faqTitle}</span>
+				</li>
+			</ol>
+		</nav>
+		<header class="kx-hero">
+			<h1>{kx.faqTitle}</h1>
+			<p>{kx.faqLead}</p>
+			<DocSearch collections={config.searchCollections} />
+		</header>
+		{
+			entries.length ? (
+				<div class="kx-faq kx-list">
+					{entries.map((entry) => (
+						<details id={entry.data.slug || entry.id}>
+							<summary>{entry.data.title}</summary>
+							<PortableText value={entry.data.answer} />
+						</details>
+					))}
+				</div>
+			) : (
+				<div class="wb-empty">
+					<p>
+						<strong>{kx.faqEmptyTitle}</strong>
+					</p>
+					<p class="wb-muted">{kx.faqEmptyHint}</p>
+				</div>
+			)
+		}
+	</div>
+</Layout>

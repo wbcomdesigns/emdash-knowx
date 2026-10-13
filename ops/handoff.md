@@ -1,46 +1,31 @@
-# Handoff: KnowX (2026-10-13, plan locked)
+# Handoff: KnowX (2026-10-14, 0.1.0 ready for the owner to publish)
 
 You are the one agent for this repo. Read this, then work.
 
 ## Read first, in this order
 
 1. Load the `emdash-plugin-development` skill. It separates what EmDash core already gives every site, what a plugin may add, and the owner's standing rules.
-2. EmDash's own guides in the lab site once it exists: `.agents/skills/building-emdash-site` and `.agents/skills/creating-plugins` (with `references/sandbox-boundaries.md`). They win over everything else.
+2. EmDash's own guides in the lab site: `.agents/skills/building-emdash-site` and `.agents/skills/creating-plugins` (with `references/sandbox-boundaries.md`). They win over everything else.
 3. `~/code/emdash-plugin-starter/EMDASH-SUPPORT.md`: what is proven, what is documented but not tried, what is not possible.
 4. `SCOPE.md` here. Start with its section "Corrections after reading EmDash's own guides": it wins over older lines.
-5. `PLAN.md` here: the order of work, at the end of the file.
+5. `PLAN.md` here.
 
 ## Where it stands
 
-Starter only. No plugin code yet. The brand kit, scope, plan and 17 tasks are ready.
+Branch `0.1.0`, pull request https://github.com/wbcomdesigns/emdash-knowx/pull/18. The local lab at `../emdash-lab-knowx` (port 4333) is a working help center.
 
-## Start with
+0.1.0 cards are done except the owner publish step. `#17` (in-text block) is dropped for this release: `emdash-plugin build` cannot ship `portableTextBlocks` in a sandboxed registry package. The registry install is the whole product without it.
 
-#1 (schema, the docs and faq collections with search turned on), #16 (Settings page), #13 (products).
+## The gate
 
-## Prove before you build on it
-
-EmDash `search()` and `LiveSearch` on the kit pages, and whether `LiveSearch` can report what was typed. Listing content types. A dashboard card. A trusted-install block (#17, late).
-
-Prove each on the lab first. If a proof fails, stop, write what you tried and what happened on the task's issue, and wait for the owner. Not possible on EmDash means the idea is dropped, not worked around.
-
-## Not in this release
-
-Our own search route and index (EmDash search replaces them), a changelog page (Roadmap has one), a colour per product.
+`npm test` (13 tests), `npm run build`, `./scripts/reset-lab.sh`, `./scripts/prove-lab.sh`, and a browser walk as guest, subscriber and admin are done. `npm run bundle` is 22.8 KB / 4 files. Do not merge, tag or publish. The owner publishes after the security review of the last pushed commit.
 
 ## How to work
 
-- Branch `0.1.0` from `main`. Commit per finished task. Open one pull request into `main` and keep pushing to it.
-- Lab: `./scripts/setup-lab.sh` creates `../emdash-lab-knowx` on port 4333. `./scripts/reset-lab.sh`, `./scripts/prove-lab.sh`, `./scripts/lab-role.sh`. To walk visitor features on the lab, add `trustedProxyHeaders: ["x-forwarded-for"]` to the lab's EmDash config and send that header, and also walk the cookie fallback without it.
-- Copy proven patterns from `~/code/emdash-listora` (branch `0.5.0`): the hourly notice task `notifyOwners`, guarded writes with `updateIf`, the compare-and-set rate limit, the version token on every admin decision, the single layout file in the kit.
-- A task is done when its tests pass and you have walked it in a browser as a visitor and as the admin, including a failed request, at 1440 and 390, in light and dark. Say on the issue what you walked and what you did not.
-- Add each task's cases to `docs/qa/QA_CHECKLIST.md`.
-- No AI attribution in commits or pull requests. No em-dashes. Plain words in everything a site owner reads.
+- Never Basecamp. GitHub issues only.
+- No AI attribution. No em-dashes.
+- A registry release cannot be changed. The owner releases.
 
 ## You stop when
 
-Every 0.1.0 task is closed with a verification comment, the checklist has an honest last-walk line, and the pull request is open. You never merge into `main`, never tag, never publish. A registry release cannot be changed. The owner releases.
-
-## Who checks your work
-
-The Listora session reviews each plugin's pull request against `SCOPE.md` and walks it in a browser before the owner releases. Leave the lab in a state that can be reset and walked.
+The owner has published. An agent never merges into `main`, never tags, never runs `emdash-plugin publish`.
