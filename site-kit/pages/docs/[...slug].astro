@@ -129,12 +129,14 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 						}
 						{
 							related.length ? (
-								<section>
+								<section class="kx-section">
 									<h2>{kx.related}</h2>
 									<ul class="kx-list">
 										{related.map((item) => (
 											<li>
-												<a href={`${HELP_PATH}/${item.data.slug || item.id}`}>{item.data.title}</a>
+												<a class="wb-item" href={`${HELP_PATH}/${item.data.slug || item.id}`}>
+													<strong>{item.data.title}</strong>
+												</a>
 											</li>
 										))}
 									</ul>

@@ -44,8 +44,8 @@ const articles = docs.entries;
 
 		{
 			cards.length ? (
-				<section>
-					<h2 class="wb-sr">{kx.categoriesHeading}</h2>
+				<section class="kx-section">
+					<h2>{kx.categoriesHeading}</h2>
 					<ul class={productLayer ? "kx-grid" : "kx-list"}>
 						{cards.map((item) => (
 							<li>
@@ -55,17 +55,21 @@ const articles = docs.entries;
 									) : null}
 									<strong>{item.label}</strong>
 									{item.description ? <span class="wb-muted">{item.description}</span> : null}
-									<span class="wb-muted">{kx.articlesCount(item.count)}</span>
+									<span class="kx-count">{kx.articlesCount(item.count)}</span>
 								</a>
 							</li>
 						))}
 					</ul>
 				</section>
-			) : articles.length ? (
-				<section>
+			) : null
+		}
+
+		{
+			articles.length ? (
+				<section class="kx-section">
 					<h2>{kx.articlesHeading}</h2>
 					<ul class="kx-list">
-						{articles.map((entry) => (
+						{articles.slice(0, 8).map((entry) => (
 							<li>
 								<a class="wb-item" href={`/docs/${entry.data.slug || entry.id}`}>
 									<strong>{entry.data.title}</strong>
@@ -75,7 +79,7 @@ const articles = docs.entries;
 						))}
 					</ul>
 				</section>
-			) : (
+			) : cards.length ? null : (
 				<div class="wb-empty">
 					<p>
 						<strong>{kx.emptyHomeTitle}</strong>

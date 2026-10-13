@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.0, isolated Chromium on the local lab (port 4333). Submit walk after the remaining 0.1.0 cards.
+**Last walk:** 2026-10-14, 0.1.1 presentation pass, isolated Chromium on the local lab (port 4333). Guest home, article, search, FAQ and category at 1440 and 390, light and dark.
 
 Walked in the browser as a guest: G-1, G-2, G-3, G-4, G-5, G-6, G-7, G-9, G-10, G-11, G-13, G-15, FAQ, LiveSearch labels. Walked as subscriber: M-1. Walked as admin: A-2, A-3, A-5, A-6 (dashboard card), Settings. Presentation: 1440, 768, 390; kit surfaces in dark.
 

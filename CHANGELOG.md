@@ -2,6 +2,15 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.1.1] - 2026-10-14
+
+Copy `site-kit/` again after you update.
+
+- Improve  - Help home shows Topics and a list of articles, so the page is no longer a title and three cards on a blank frame.
+- Improve  - Topic cards, search hits, FAQ rows and article extras use the same card density. The first FAQ answer is open.
+- Improve  - The search results page has one search box. JavaScript-off search still works.
+- Improve  - Article page: table of contents, previous/next and related articles are cards. Dark mode inputs follow the system setting.
+
 ## [0.1.0] - 2026-10-14
 
 First release. Copy `site-kit/` after you install.
