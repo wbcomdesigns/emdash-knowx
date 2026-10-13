@@ -1,5 +1,7 @@
 # KnowX Knowledge Base: scope
 
+**Status: LOCKED on 2026-10-13.** Scope and decisions were agreed with the owner. An agent does not add options or features. If a task cannot be done as written, stop, say why on its issue, and wait for the owner.
+
 This file is the contract for the plugin. Code, tests, docs and cards all follow it. If something here is wrong, change it here first, in the same pull request as the code.
 
 ## Purpose
@@ -44,6 +46,28 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 | When a reader finds no answer | Offer a contact link. The owner sets one contact page or email in settings. |
 | What search looks through | The owner picks. Help articles by default, plus any other content they add. |
 | Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
+| Several products | Yes. Top-level categories are products, shown as cards with an icon and a description. One top-level category means no product layer. |
+| Article page extras | Section tree, copy-link on headings, copy button on code, last updated date, Ctrl or Cmd + K for search. |
+| FAQ | Yes, its own page, with FAQ data for search engines. |
+| Versions | An optional "Applies to version" badge on an article. No changelog page here: Roadmap has one. |
+| Search engine data | Articles and breadcrumbs. |
+| Choosing what search covers | Tick-boxes of the site's real content types. |
+| Setup and long lists | Developer guide plus one command. Next, Previous and find in admin. |
+
+## Against the WordPress KnowX theme, checked 2026-10-13
+
+| WordPress KnowX feature | Here |
+| --- | --- |
+| Docs home with search and cards, products as top-level categories with icon and description | Yes (no per-product colour) |
+| Article page: section tree, On this page, copy-link, copy code, previous and next, last updated | Yes |
+| Instant search with Ctrl or Cmd + K, per product or everywhere | Yes |
+| FAQ page with FAQ data | Yes |
+| "Applies to version" badge | Yes |
+| Changelog page | No. Lives in the Roadmap plugin |
+| Search engine data for articles and breadcrumbs | Yes |
+| Light and dark toggle, theme colour, fonts | From the site itself |
+
+Extra, not in the theme: Was this helpful, the search log, the report of weak articles and empty searches, and the contact link.
 
 ## In scope for 0.1.0
 
@@ -65,11 +89,12 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 
 - Live chat or ticket hand-off
 - AI answers
-- Versioned docs
-- Multi-product knowledge bases
+- Versioned docs beyond the "Applies to version" badge
+- A changelog page (the Roadmap plugin has one)
+- A colour per product
 - Article ratings on a 5-star scale (that is the Reviews plugin)
 - Any paid or Pro feature
-- Email sending (the host may have no mail configured)
+- Email sending
 - Portable Text blocks or anything that needs a native plugin
 - Injecting scripts, styles or HTML into pages from the plugin
 - Translating the admin screens, and switching language per visitor. The wording file holds one language

@@ -1,5 +1,7 @@
 # Plan: KnowX Knowledge Base
 
+**Status: LOCKED on 2026-10-13.** Scope and decisions were agreed with the owner. An agent does not add options or features. If a task cannot be done as written, stop, say why on its issue, and wait for the owner.
+
 The plan for this plugin, kept in the repository so it travels with the code. `SCOPE.md` says what the plugin is. This file says in what order it gets built and what waits.
 
 ## Decisions made with the owner
@@ -9,6 +11,13 @@ The plan for this plugin, kept in the repository so it travels with the code. `S
 | When a reader finds no answer | Offer a contact link. The owner sets one contact page or email in settings. |
 | What search looks through | The owner picks. Help articles by default, plus any other content they add. |
 | Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
+| Several products | Yes. Top-level categories are products, shown as cards with an icon and a description. One top-level category means no product layer. |
+| Article page extras | Section tree, copy-link on headings, copy button on code, last updated date, Ctrl or Cmd + K for search. |
+| FAQ | Yes, its own page, with FAQ data for search engines. |
+| Versions | An optional "Applies to version" badge on an article. No changelog page here: Roadmap has one. |
+| Search engine data | Articles and breadcrumbs. |
+| Choosing what search covers | Tick-boxes of the site's real content types. |
+| Setup and long lists | Developer guide plus one command. Next, Previous and find in admin. |
 
 ## 0.1.0: first release
 
@@ -46,3 +55,9 @@ See "Out of scope" in `SCOPE.md`. If a card seems to need one of those, stop and
 - Prove the kit on a preview deploy of one existing site, never on production first
 - Check the site's EmDash version, its content security policy, and its page cache against what the kit does
 - Findings from the first plugin are in `wbcomdesigns/emdash-listora` issue #23
+
+## Added after the owner review and the WordPress comparison (2026-10-13)
+
+Work the original steps in order, with these placed as follows: #16 settings page (right after the schema step), #13 products (before the home and category pages), #14 article page extras (with the article page step), #15 FAQ (after the article page), #17 in-text block (prove first, before the wording file).
+
+One agent works this repo, in order, on a branch named `0.1.0`, opens a pull request into `main` and stops. It never merges, tags or publishes. Guest writes here (helpful votes, comments after a No, the search log) are public: copy the compare-and-set rate limit and guarded writes from `emdash-listora`.
