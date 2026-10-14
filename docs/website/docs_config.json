@@ -15,7 +15,9 @@
       "pages": [
         { "slug": "introduction", "title": "Introduction" },
         { "slug": "install", "title": "Install KnowX" },
-        { "slug": "first-articles", "title": "Your first help articles" }
+        { "slug": "first-articles", "title": "Your first help articles" },
+        { "slug": "use-cases", "title": "Use cases" },
+        { "slug": "posts-and-pages", "title": "Posts and pages" }
       ]
     },
     {
