@@ -37,7 +37,9 @@ const schema = {
 			<ol class="kx-crumbs">
 				<li><a href={HELP_PATH}>{kx.breadcrumbHelp}</a></li>
 				<li>
-					<span aria-hidden="true">/</span>
+					<span class="kx-crumbs__sep" aria-hidden="true">
+						/
+					</span>
 					<span>{kx.faqTitle}</span>
 				</li>
 			</ol>
@@ -49,9 +51,9 @@ const schema = {
 		</header>
 		{
 			entries.length ? (
-				<div class="kx-faq kx-list">
-					{entries.map((entry) => (
-						<details id={entry.data.slug || entry.id}>
+				<div class="kx-faq">
+					{entries.map((entry, index) => (
+						<details id={entry.data.slug || entry.id} open={index === 0}>
 							<summary>{entry.data.title}</summary>
 							<PortableText value={entry.data.answer} />
 						</details>

@@ -43,7 +43,9 @@ const children = term?.children ?? [];
 				{
 					trail.map((item) => (
 						<li>
-							<span aria-hidden="true">/</span>
+							<span class="kx-crumbs__sep" aria-hidden="true">
+								/
+							</span>
 							<a href={`${HELP_PATH}/category/${item.slug}`}>{item.label}</a>
 						</li>
 					))
@@ -51,7 +53,9 @@ const children = term?.children ?? [];
 				{
 					term ? (
 						<li>
-							<span aria-hidden="true">/</span>
+							<span class="kx-crumbs__sep" aria-hidden="true">
+								/
+							</span>
 							<span>{term.label}</span>
 						</li>
 					) : null
@@ -92,16 +96,19 @@ const children = term?.children ?? [];
 						</ul>
 					) : null}
 					{entries.length ? (
-						<ul class="kx-list">
-							{entries.map((entry) => (
-								<li>
-									<a class="wb-item" href={`${HELP_PATH}/${entry.data.slug || entry.id}`}>
-										<strong>{entry.data.title}</strong>
-										{entry.data.excerpt ? <span class="wb-muted">{entry.data.excerpt}</span> : null}
-									</a>
-								</li>
-							))}
-						</ul>
+						<section class="kx-section">
+							<h2>{kx.articlesHeading}</h2>
+							<ul class="kx-list">
+								{entries.map((entry) => (
+									<li>
+										<a class="wb-item" href={`${HELP_PATH}/${entry.data.slug || entry.id}`}>
+											<strong>{entry.data.title}</strong>
+											{entry.data.excerpt ? <span class="wb-muted">{entry.data.excerpt}</span> : null}
+										</a>
+									</li>
+								))}
+							</ul>
+						</section>
 					) : (
 						<div class="wb-empty">
 							<p>

@@ -6,7 +6,10 @@ export const kx = {
 	searchPlaceholder: "Search the help center",
 	searchSubmit: "Search",
 	searchTitle: "Search",
-	searchResultsFor: (q: string) => `Results for "${q}"`,
+	searchResultsFor: (q: string) => {
+		const shown = q.length > 100 ? `${q.slice(0, 100)}…` : q;
+		return `Results for "${shown}"`;
+	},
 	searchPrompt: "Type a few words to search.",
 	searchLoading: "Searching…",
 	searchNone: "No articles match that search.",

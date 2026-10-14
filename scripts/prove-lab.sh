@@ -57,7 +57,7 @@ echo "$INSIGHTS" | grep -q 'Need more steps' || fail "insights comment"
 echo "$INSIGHTS" | grep -qi 'Welcome' || fail "insights article name"
 ok "insights after a vote and a search"
 
-for path in /docs /docs/search /docs/faq /docs/category/getting-started /docs/welcome-to-the-help-center; do
+for path in /docs /docs/search /docs/faq /docs/category/getting-started /docs/category/getting-started/first-week /docs/welcome-to-the-help-center; do
 	code="$(curl -s -o /dev/null -w "%{http_code}" "$BASE$path")"
 	[[ "$code" == "200" ]] || fail "page $path returned $code"
 done
@@ -70,6 +70,7 @@ ok "missing article is 404"
 SEARCH_PAGE="$(curl -sf "$BASE/docs/search?q=welcome")"
 echo "$SEARCH_PAGE" | grep -qi "Welcome" || fail "search page finds a help article"
 echo "$SEARCH_PAGE" | grep -q "Help article" || fail "search page labels a help article"
+echo "$SEARCH_PAGE" | grep -q "How this help center is organised" || fail "search hit shows the article excerpt, not a repeated title"
 ok "search page finds and labels help articles"
 
 SAVE_SEARCH="$(json -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"form_submit","action_id":"save_search","page":"/settings","values":{"search_collections":["docs","posts"]}}' "$API/admin")"

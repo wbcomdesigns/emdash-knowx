@@ -14,6 +14,7 @@ const { collections = ["docs"], autofocus = false } = Astro.props;
 ---
 
 <div class="wb kx-search" data-kx-search>
+	<label class="wb-sr" data-kx-search-label>{kx.searchPlaceholder}</label>
 	<LiveSearch
 		placeholder={kx.searchPlaceholder}
 		collections={collections}
@@ -46,12 +47,28 @@ const { collections = ["docs"], autofocus = false } = Astro.props;
 		});
 	}
 
+	function nameField(box: Element) {
+		const input = box.querySelector<HTMLInputElement>(".emdash-live-search-input, input[type='search'], input");
+		const label = box.querySelector<HTMLLabelElement>("[data-kx-search-label]");
+		if (!input || input.getAttribute("aria-label") || input.labels?.length) return;
+		const text = label?.textContent?.trim() || "Search the help center";
+		if (label) {
+			if (!label.id) label.id = "kx-search-label";
+			if (!input.id) input.id = "kx-search-input";
+			label.setAttribute("for", input.id);
+			input.setAttribute("aria-labelledby", label.id);
+		} else {
+			input.setAttribute("aria-label", text);
+		}
+	}
+
 	function watchLabels() {
-		const box = document.querySelector("[data-kx-search]");
-		if (!box) return;
-		const list = box.querySelector(".emdash-live-search-results-list") || box;
-		relabel(list);
-		new MutationObserver(() => relabel(list)).observe(list, { childList: true });
+		document.querySelectorAll("[data-kx-search]").forEach((box) => {
+			nameField(box);
+			const list = box.querySelector(".emdash-live-search-results-list") || box;
+			relabel(list);
+			new MutationObserver(() => relabel(list)).observe(list, { childList: true });
+		});
 	}
 
 	document.addEventListener("keydown", (event) => {

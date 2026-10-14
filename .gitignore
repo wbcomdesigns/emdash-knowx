@@ -7,5 +7,4 @@ dist/
 coverage/
 .emdash/
 node_modules
-docs/qa/walks/**/shots/
-docs/qa/walks/**/node_modules/
+docs/qa/walks/

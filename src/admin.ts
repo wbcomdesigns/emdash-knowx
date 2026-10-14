@@ -10,12 +10,10 @@ import {
 	SEARCH_COLLECTION_CAP,
 	searchCollectionsSetting,
 } from "./settings";
-import { asBoolean, asRecord, asString } from "./util";
+import { asBoolean, asNumber, asRecord, asString } from "./util";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
 export type BlockResponse = { blocks: Array<Record<string, unknown>>; toast?: Toast };
-
-const lines = (items: string[]) => items.map((text) => ({ type: "context", text }));
 
 export async function renderInsights(
 	ctx: PluginContext,
@@ -36,25 +34,110 @@ export async function renderInsights(
 		};
 	}
 
-	const articleLine =
-		status.articleCount === 0
-			? "The help collection is ready. No published articles yet."
-			: `${status.articleCount} published help ${status.articleCount === 1 ? "article" : "articles"}.`;
-
 	const reports = await insightTables(ctx);
+	const setup = status.faqCollectionExists
+		? []
+		: [
+				{
+					type: "empty",
+					title: "The FAQ collection is not set up yet",
+					description: "Add the FAQ collection from the site kit seed when you want a FAQ page.",
+				},
+			];
 	return {
 		blocks: [
 			{ type: "header", text: "Insights" },
-			{ type: "section", text: articleLine },
-			{
-				type: "section",
-				text: status.faqCollectionExists
-					? "The FAQ collection is ready."
-					: "The FAQ collection is not set up yet.",
-			},
+			...setup,
+			await insightStats(ctx, status.articleCount),
 			...reports,
 		],
 		toast: extra?.toast,
+	};
+}
+
+async function insightStats(ctx: PluginContext, articleCount: number): Promise<Record<string, unknown>> {
+	const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+	let searchesThisWeek = 0;
+	let emptyThisWeek = 0;
+	let yes = 0;
+	let no = 0;
+	const series: Array<[number, number]> = [];
+	try {
+		const searches = await ctx.storage.searches.query({ limit: 200, orderBy: { lastAt: "desc" } });
+		const days = new Map<number, number>();
+		for (let i = 13; i >= 0; i--) {
+			const day = new Date();
+			day.setHours(0, 0, 0, 0);
+			day.setDate(day.getDate() - i);
+			days.set(day.getTime(), 0);
+		}
+		for (const item of searches.items) {
+			try {
+				const row = asRecord(item.data);
+				const last = asString(row.lastAt);
+				const count = asNumber(row.count) ?? 0;
+				if (last && last >= weekStart) {
+					searchesThisWeek += count;
+					if (row.found === false) emptyThisWeek += count;
+				}
+				if (!last) continue;
+				const day = new Date(last);
+				day.setHours(0, 0, 0, 0);
+				const key = day.getTime();
+				if (days.has(key)) days.set(key, (days.get(key) || 0) + count);
+			} catch {
+				/* one bad row must not hide the page */
+			}
+		}
+		for (const [time, value] of days) series.push([time, value]);
+	} catch {
+		searchesThisWeek = 0;
+	}
+	try {
+		const votes = await ctx.storage.feedback.query({ limit: 200, orderBy: { createdAt: "desc" } });
+		for (const item of votes.items) {
+			try {
+				const row = asRecord(item.data);
+				if (row.helpful === true) yes += 1;
+				else no += 1;
+			} catch {
+				/* skip */
+			}
+		}
+	} catch {
+		yes = 0;
+		no = 0;
+	}
+	const totalVotes = yes + no;
+	const rate = totalVotes ? `${Math.round((yes / totalVotes) * 100)}%` : "None yet";
+	return {
+		type: "columns",
+		columns: [
+			[
+				{
+					type: "stats",
+					items: [
+						{ label: "Articles", value: String(articleCount) },
+						{ label: "Searches this week", value: String(searchesThisWeek) },
+						{ label: "Searches with no results", value: String(emptyThisWeek) },
+						{ label: "Helpful rate", value: rate },
+					],
+				},
+			],
+			[
+				{
+					type: "chart",
+					config: {
+						chart_type: "timeseries",
+						series: [{ name: "Searches", data: series }],
+						x_axis_name: "Day",
+						y_axis_name: "Searches",
+						style: "line",
+						height: 220,
+					},
+				},
+			],
+		],
 	};
 }
 
@@ -160,100 +243,121 @@ export async function renderSettings(
 	const types = await listContentTypes(ctx);
 	const products = await listTopLevelCategories(ctx);
 	const options = types.map((item) => ({
-		label: item.searchable ? item.label : `${item.label} (search off)`,
+		label: item.label,
 		value: item.slug,
 	}));
+	const offSearch = types.filter((item) => !item.searchable).map((item) => item.label);
 	const iconOptions = PRODUCT_ICONS.map((item) => ({ label: item.label, value: item.slug }));
+	const searchHint = offSearch.length
+		? `Turn search on for ${offSearch.join(", ")} in EmDash if you want ${offSearch.length === 1 ? "it" : "them"} in results. At most ${SEARCH_COLLECTION_CAP} types.`
+		: `Tick the types help search should cover. At most ${SEARCH_COLLECTION_CAP}, because each extra type costs another search.`;
 
 	return {
 		blocks: [
 			{ type: "header", text: "Settings" },
-			{ type: "section", text: "Each group saves on its own." },
-			{ type: "header", text: "After a No vote" },
-			...lines(["Ask the reader what was missing after they vote No on an article."]),
 			{
-				type: "form",
-				block_id: "settings_feedback",
-				fields: [
+				type: "tab",
+				panels: [
 					{
-						type: "toggle",
-						action_id: "ask_comment",
-						label: "Ask for a comment after a No vote",
-						initial_value: settings.askComment,
-					},
-				],
-				submit: { label: "Save feedback", action_id: "save_feedback" },
-			},
-			{ type: "divider" },
-			{ type: "header", text: "Still need help" },
-			...lines([
-				"Shown after a search with no results and after a No vote. A page path, an http(s) link, or a mailto address. Leave empty to hide the prompt.",
-			]),
-			{
-				type: "form",
-				block_id: "settings_contact",
-				fields: [
-					{
-						type: "text_input",
-						action_id: "contact_url",
-						label: "Contact link",
-						initial_value: settings.contactUrl,
-					},
-				],
-				submit: { label: "Save contact link", action_id: "save_contact" },
-			},
-			{ type: "divider" },
-			{ type: "header", text: "What search looks through" },
-			...lines([
-				`Tick the site's content types. Help search uses EmDash search, so a type with search turned off will not return results. At most ${SEARCH_COLLECTION_CAP}, because each extra type costs another search.`,
-			]),
-			options.length
-				? {
-						type: "form",
-						block_id: "settings_search",
-						fields: [
+						label: "Feedback",
+						blocks: [
 							{
-								type: "checkbox",
-								action_id: "search_collections",
-								label: "Content types",
-								options,
-								initial_value: settings.searchCollections.filter((slug) =>
-									options.some((item) => item.value === slug),
-								),
+								type: "form",
+								block_id: "settings_feedback",
+								fields: [
+									{
+										type: "toggle",
+										action_id: "ask_comment",
+										label: "Ask for a comment after a No vote",
+										initial_value: settings.askComment,
+									},
+								],
+								submit: { label: "Save", action_id: "save_feedback" },
+							},
+							{ type: "context", text: "Shown after a reader votes No on an article." },
+						],
+					},
+					{
+						label: "Still need help",
+						blocks: [
+							{
+								type: "form",
+								block_id: "settings_contact",
+								fields: [
+									{
+										type: "text_input",
+										action_id: "contact_url",
+										label: "Contact link",
+										initial_value: settings.contactUrl,
+									},
+								],
+								submit: { label: "Save", action_id: "save_contact" },
+							},
+							{
+								type: "context",
+								text: "A page path, an http(s) link, or a mailto address. Leave empty to hide the prompt.",
 							},
 						],
-						submit: { label: "Save search", action_id: "save_search" },
-					}
-				: {
-						type: "empty",
-						title: "No content types found",
-						description: "The site has no collections to search yet.",
 					},
-			{ type: "divider" },
-			{ type: "header", text: "Product icons" },
-			...lines([
-				useProductLayer(products)
-					? "Each top-level category is a product card on the help home. Pick an icon from this set. The description is the category description."
-					: "With one top-level category the help home shows a plain list, not product cards. You can still pick an icon here for later.",
-			]),
-			products.length
-				? {
-						type: "form",
-						block_id: "settings_icons",
-						fields: products.map((item) => ({
-							type: "select",
-							action_id: `icon__${item.id}`,
-							label: item.label,
-							initial_value: item.icon,
-							options: iconOptions,
-						})),
-						submit: { label: "Save icons", action_id: "save_icons" },
-					}
-				: {
-						type: "empty",
-						title: "No help categories yet",
-						description: "Add a help category, then pick an icon here.",
+					{
+						label: "Search",
+						blocks: [
+							options.length
+								? {
+										type: "form",
+										block_id: "settings_search",
+										fields: [
+											{
+												type: "checkbox",
+												action_id: "search_collections",
+												label: "Content types",
+												options,
+												initial_value: settings.searchCollections.filter((slug) =>
+													options.some((item) => item.value === slug),
+												),
+											},
+										],
+										submit: { label: "Save", action_id: "save_search" },
+									}
+								: {
+										type: "empty",
+										title: "No content types found",
+										description: "The site has no collections to search yet.",
+									},
+							{ type: "context", text: searchHint },
+						],
 					},
+					{
+						label: "Product icons",
+						blocks: [
+							products.length
+								? {
+										type: "form",
+										block_id: "settings_icons",
+										fields: products.map((item) => ({
+											type: "select",
+											action_id: `icon__${item.id}`,
+											label: item.label,
+											initial_value: item.icon,
+											options: iconOptions,
+										})),
+										submit: { label: "Save", action_id: "save_icons" },
+									}
+								: {
+										type: "empty",
+										title: "No help categories yet",
+										description: "Add a help category, then pick an icon here.",
+									},
+							{
+								type: "context",
+								text: useProductLayer(products)
+									? "Each top-level category is a product card on the help home."
+									: "With one top-level category the help home shows a list. You can still pick an icon here.",
+							},
+						],
+					},
+				],
+			},
 		],
 		toast: extra?.toast,
 	};

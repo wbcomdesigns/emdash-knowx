@@ -1,9 +1,8 @@
 ---
-import { search } from "emdash";
-import DocSearch from "../../components/DocSearch.astro";
+import { getEmDashCollection, search } from "emdash";
 import StillNeedHelp from "../../components/StillNeedHelp.astro";
 import Layout from "../../layouts/KnowXLayout.astro";
-import { HELP_PATH, loadConfig, pluginJson, resultHref, resultKind, SEARCH_ROUTES, visitorIdFromCookie, VID_COOKIE } from "../../lib/knowx";
+import { HELP_PATH, loadConfig, pluginJson, resultHref, resultKind, resultSnippet, SEARCH_ROUTES, visitorIdFromCookie, VID_COOKIE } from "../../lib/knowx";
 import { kx } from "../../lib/knowx-strings";
 import "../../styles/wbcom-base.css";
 import "../../styles/knowx.css";
@@ -11,12 +10,26 @@ import "../../styles/knowx.css";
 const q = (Astro.url.searchParams.get("q") || "").trim();
 const honeypot = Astro.url.searchParams.get("website") || "";
 const config = await loadConfig(Astro.url.origin);
-let items: Array<{ collection: string; slug: string | null; title?: string; snippet?: string }> = [];
+let items: Array<{ collection: string; slug: string | null; title?: string; snippetHtml: string; excerpt: string }> = [];
 let failed = false;
 if (q) {
 	try {
 		const result = await search(q, { collections: config.searchCollections, limit: 20 });
-		items = result.items;
+		const needExcerpt = result.items.some((item) => !resultSnippet(item.title || "", item.snippet));
+		const excerpts = new Map<string, string>();
+		if (needExcerpt) {
+			const docs = await getEmDashCollection("docs", { limit: 200 }).catch(() => null);
+			for (const entry of docs?.entries ?? []) {
+				const slug = typeof entry.data.slug === "string" && entry.data.slug ? entry.data.slug : String(entry.id || "");
+				const excerpt = typeof entry.data.excerpt === "string" ? entry.data.excerpt.trim() : "";
+				if (slug && excerpt) excerpts.set(slug, excerpt);
+			}
+		}
+		items = result.items.map((item) => {
+			const snippetHtml = resultSnippet(item.title || "", item.snippet);
+			const excerpt = !snippetHtml && item.slug ? excerpts.get(item.slug) || "" : "";
+			return { collection: item.collection, slug: item.slug, title: item.title, snippetHtml, excerpt };
+		});
 	} catch {
 		failed = true;
 	}
@@ -45,7 +58,6 @@ const title = q ? kx.searchResultsFor(q) : kx.searchTitle;
 				<input class="kx-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
 				<button class="wb-btn" type="submit">{kx.searchSubmit}</button>
 			</form>
-			<DocSearch collections={config.searchCollections} />
 		</header>
 
 		{
@@ -57,10 +69,10 @@ const title = q ? kx.searchResultsFor(q) : kx.searchTitle;
 				<ul class="kx-list">
 					{items.map((item) => (
 						<li>
-							<a class="wb-item" href={resultHref(item.collection, item.slug, SEARCH_ROUTES)}>
+							<a class="kx-result" href={resultHref(item.collection, item.slug, SEARCH_ROUTES)}>
 								<span class="kx-kind">{resultKind(item.collection)}</span>
 								<strong>{item.title || item.slug}</strong>
-								{item.snippet ? <span class="wb-muted" set:html={item.snippet} /> : null}
+								{item.snippetHtml ? <span class="wb-muted" set:html={item.snippetHtml} /> : item.excerpt ? <span class="wb-muted">{item.excerpt}</span> : null}
 							</a>
 						</li>
 					))}
@@ -72,7 +84,7 @@ const title = q ? kx.searchResultsFor(q) : kx.searchTitle;
 					</p>
 					<p class="wb-muted">{kx.searchNoneHint}</p>
 					<p>
-						<a href={HELP_PATH}>{kx.backHome}</a>
+						<a class="wb-btn" href={HELP_PATH}>{kx.backHome}</a>
 					</p>
 				</div>
 			)

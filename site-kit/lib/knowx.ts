@@ -1,3 +1,4 @@
+import { pluginFetch } from "./wbcom-kit";
 import { kx, kindLabel } from "./knowx-strings";
 
 export const HELP_PATH = "/docs";
@@ -30,12 +31,34 @@ function unwrap(json: unknown): Record<string, unknown> {
 }
 
 export async function pluginJson(origin: string, path: string, body?: unknown): Promise<Record<string, unknown>> {
-	const res = await fetch(`${origin.replace(/\/$/, "")}/_emdash/api/plugins/${PLUGIN}/${path}`, {
-		method: body ? "POST" : "GET",
-		headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
-		body: body ? JSON.stringify(body) : undefined,
-	});
+	const res = await pluginFetch(
+		PLUGIN,
+		path,
+		{
+			method: body ? "POST" : "GET",
+			headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
+			body: body ? JSON.stringify(body) : undefined,
+		},
+		origin.replace(/\/$/, ""),
+	);
 	return unwrap(await res.json().catch(() => null));
+}
+
+/** Search snippet with marks stripped. Empty when it only repeats the title. */
+export function snippetPlain(snippet: string): string {
+	return snippet.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Line under a search hit. Keep marked HTML when it adds words beyond the title.
+ * Otherwise return empty so the page can show the article excerpt instead.
+ */
+export function resultSnippet(title: string, snippet?: string): string {
+	if (!snippet) return "";
+	const plain = snippetPlain(snippet);
+	const label = (title || "").replace(/\s+/g, " ").trim();
+	if (!plain || plain.toLowerCase() === label.toLowerCase()) return "";
+	return snippet;
 }
 
 export async function loadConfig(origin: string): Promise<KnowxConfig> {
