@@ -122,6 +122,12 @@
 	color: var(--wb-muted);
 }
 
+.kx-crumbs li {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+}
+
 .kx-crumbs a {
 	color: inherit;
 	text-decoration: underline;

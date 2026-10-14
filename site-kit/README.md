@@ -4,6 +4,8 @@ The plugin is the engine. This folder is what an EmDash site owner copies so vis
 
 Install `@wbcomdesigns/emdash-knowx` first (or the local package). Then apply this kit. The plugin alone does not create pages.
 
+A registry install mounts the plugin at a generated id, not the name `knowx`. `wbcom-kit.ts` tries that id first, then the name. Copy this kit again after every plugin update.
+
 ## Apply on a site
 
 On the lab, prefer `./scripts/apply-kit.sh` (or `./scripts/setup-lab.sh` the first time). Manual copy from the site root (`src/` is the Astro app):

@@ -59,7 +59,9 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 				{
 					category ? (
 						<li>
-							<span aria-hidden="true">/</span>
+							<span class="kx-crumbs__sep" aria-hidden="true">
+								/
+							</span>
 							<a href={`${HELP_PATH}/category/${category.slug}`}>{category.label}</a>
 						</li>
 					) : null
@@ -67,7 +69,9 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 				{
 					entry ? (
 						<li>
-							<span aria-hidden="true">/</span>
+							<span class="kx-crumbs__sep" aria-hidden="true">
+								/
+							</span>
 							<span>{entry.data.title}</span>
 						</li>
 					) : null

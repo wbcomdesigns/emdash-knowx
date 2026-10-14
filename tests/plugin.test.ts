@@ -22,7 +22,7 @@ function texts(page: { blocks: Array<unknown> }): string {
 }
 
 describe("seed", () => {
-	it("defines searchable docs and faq collections with 8 articles in 3 categories", () => {
+	it("defines searchable docs and faq collections with 8 articles in 3 top-level categories", () => {
 		expect(docsCollection.supports).toContain("search");
 		expect(faqCollection.supports).toContain("search");
 		expect(docsCollection.fields.filter((field: { searchable?: boolean }) => field.searchable).map((field: { slug: string }) => field.slug)).toEqual([
@@ -31,8 +31,9 @@ describe("seed", () => {
 			"content",
 		]);
 		expect(docs).toHaveLength(8);
-		expect(categoryTerms).toHaveLength(3);
-		expect(new Set(docs.map((item: { taxonomies: { doc_category: string[] } }) => item.taxonomies.doc_category[0])).size).toBe(3);
+		expect(categoryTerms.filter((term: { parent?: string }) => !term.parent)).toHaveLength(3);
+		expect(categoryTerms.some((term: { slug: string; parent?: string }) => term.slug === "first-week" && term.parent === "getting-started")).toBe(true);
+		expect(new Set(docs.map((item: { taxonomies: { doc_category: string[] } }) => item.taxonomies.doc_category[0])).size).toBe(4);
 		expect(faqs.length).toBeGreaterThan(0);
 	});
 });
@@ -83,7 +84,23 @@ describe("admin insights", () => {
 		expect(body).toMatch(/1 published help article/);
 		expect(body).toMatch(/FAQ collection is ready/);
 		expect(body).toMatch(/No weak articles yet/);
+		expect(body).toMatch(/No comments yet/);
 		expect(body).toMatch(/No searches yet/);
+		expect(body).toMatch(/No empty searches yet/);
+	});
+
+	it("shows a clear message when the collection setting points at a missing type", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		await site.rt.fixtures.plugin.setting("collection", "no-such");
+		expect(await site.call("health")).toMatchObject({
+			ok: true,
+			collectionExists: false,
+			articleCount: 0,
+		});
+		expect(texts(await site.rt.admin.loadPage("/insights"))).toMatch(/Help articles are not set up/);
+		expect(await site.call("config")).toMatchObject({ ok: true });
 	});
 });
 

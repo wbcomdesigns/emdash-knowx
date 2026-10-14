@@ -52,6 +52,12 @@ export const categoryTerms = [
 		label: "Account and billing",
 		description: "Your account, plans and invoices.",
 	},
+	{
+		slug: "first-week",
+		label: "First week",
+		description: "What to do in the first few days.",
+		parent: "getting-started",
+	},
 ];
 
 export const docTaxonomies = [

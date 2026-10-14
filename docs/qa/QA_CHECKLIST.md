@@ -2,13 +2,15 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, guest browser walk on lab :4333 after `ff1d21a` plus pager fix. Clicked topic, article, copy-link, Yes (thanks shown), kit LiveSearch (`Help article`), search page (`welcome`, 2 hits), empty search, FAQ (first open), 404 heading, dark home/article, 1024 home, 390 home/article. Registry JPEGs rewritten only after that walk.
+**Last walk:** 2026-10-14, 0.1.1 team issues #22/#23/#24 on lab :4333 after reset. `npm test` 23 passed. `prove-lab.sh` passed (including search excerpt line).
 
-Walked in the browser as a guest this pass: G-7, G-10 (404 status + empty state), search hits/empty, FAQ, category, article chrome. Presentation matrix: 1440 then 1024/820 then 390, light and dark.
+Walked in the browser: G-1 (search welcome), G-2 (no-results), G-4 (Yes vote), G-7 (help home Topics + articles), G-8 (Help / Getting started / First week), G-10 (missing article URL), #22.2 (search line is the excerpt, not a repeated title), #22.3 (space after each breadcrumb slash). Presentation: 1440/768/390, light and dark, no horizontal overflow on home and article. Registry shots retaken at 1440x900 from the styled blog lab. Banner 3000x1000.
 
-Checked at route level only: none this pass (kit presentation only).
+Checked at route level: prove-lab (health, admin Insights/Settings/widget, products, config, log_search, helpful, search labels, posts coverage, nested first-week). Kit fetch tests: registry id `r_2bzw2y6sgiq5c455`, local slug fallback, never remember a failure. A-1 empty Insights tables in tests. A-4 missing collection in tests.
 
-Not walked this pass: G-8 nested category, G-12 JS off, G-14 contact empty, G-92, A-1 through A-6, P-5 tab order, P-8 two-visitor source, RTL, 430/768.
+Earlier the same day (same lab): G-3, G-5, G-6, G-9, G-11, G-13, G-14, G-15, G-92, M-1, A-2, A-3, A-5, A-6, P-1 to P-8, RTL.
+
+Not walked live: A-1 on a wiped Insights store (shared lab already has searches; least-helpful empty state was on screen). A-4 from Settings (internal `collection` key, never on that screen).
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -77,6 +79,5 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 ## Known gaps
 
 - Starter site header stays light in dark. The kit must still paint its own `.kx` canvas (T-80). A 0.1.1 bounce on #20 was that Topics and article body used light text on the host page.
-- The seed has no nested help category, so G-8 is only a top-level category walk.
-- The collection setting is internal. A-4 cannot be done from the Settings screen.
+- The collection setting is internal. A-4 is proven by setting `collection` to `no-such` in tests, not from the Settings screen.
 - A block inside article text needs a trusted install. It is not in this registry release.

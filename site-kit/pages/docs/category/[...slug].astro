@@ -43,7 +43,9 @@ const children = term?.children ?? [];
 				{
 					trail.map((item) => (
 						<li>
-							<span aria-hidden="true">/</span>
+							<span class="kx-crumbs__sep" aria-hidden="true">
+								/
+							</span>
 							<a href={`${HELP_PATH}/category/${item.slug}`}>{item.label}</a>
 						</li>
 					))
@@ -51,7 +53,9 @@ const children = term?.children ?? [];
 				{
 					term ? (
 						<li>
-							<span aria-hidden="true">/</span>
+							<span class="kx-crumbs__sep" aria-hidden="true">
+								/
+							</span>
 							<span>{term.label}</span>
 						</li>
 					) : null

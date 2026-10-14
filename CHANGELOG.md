@@ -10,10 +10,14 @@ Copy `site-kit/` again after you update.
 - Improve  - Topic cards, search hits, FAQ rows and article extras use the same card density. The first FAQ answer is open.
 - Improve  - The search results page has one search box. JavaScript-off search still works.
 - Improve  - Article page: table of contents, previous/next and related articles are cards. Dark mode inputs follow the system setting.
+- Fix      - The kit finds the plugin at the registry id or the name knowx, so a registry install no longer 404s on config, vote and search log.
+- Fix      - Breadcrumbs put a space after each slash (Help / Account, not Help /Account).
+- Fix      - A search hit shows a line from the article when the search snippet only repeats the title.
 - Fix      - The kit paints its own canvas in dark, so Topics and article body stay readable when the host page stays light.
 - Fix      - Article copy-link is an icon with a name, not a "Copy link" pill inside the heading.
 - Fix      - Missing-article page uses a heading. Article search uses the same card as home.
 - Fix      - Article pager no longer draws an empty card when there is only a Next or Previous link.
+- Fix      - Registry banner is 3000 by 1000. Screenshots are 1440 by 900 from a styled site.
 
 ## [0.1.0] - 2026-10-14
 

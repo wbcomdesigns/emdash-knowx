@@ -76,7 +76,7 @@ export const docs = [
 		"invite-your-team",
 		"Invite your team",
 		"Send invites and choose what each person can do.",
-		"getting-started",
+		"first-week",
 		[
 			"People join from an email invite. They see only the projects you add them to.",
 			"# Send an invite",

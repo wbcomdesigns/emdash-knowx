@@ -3,6 +3,7 @@
 - Improve: help home shows topics and articles. Cards, FAQ and search results fill the page.
 - Improve: one search box on the results page. The first FAQ answer is open.
 - Improve: article table of contents, previous/next and related articles are cards.
+- Fix: the kit finds the plugin after a registry install. Breadcrumbs read Help / Topic. Search hits show article text, not a repeated title. Banner and screenshots match the registry sizes.
 
 Copy `site-kit/` after updating.
 
