@@ -24,7 +24,7 @@ No names and no internet addresses. Votes keep a scrambled code only to stop rep
 
 ## Can I put a search box inside a blog post?
 
-Not with the registry install. EmDash does not let registry plugins add blocks inside post text.
+Not inside the text you write in the editor: EmDash does not let registry plugins add blocks there. Your developer can add the help search to the post template so it shows on every post. See [Use it on blog posts and pages](../getting-started/posts-and-pages.md).
 
 ## Is there a changelog page?
 
