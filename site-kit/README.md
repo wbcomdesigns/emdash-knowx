@@ -41,7 +41,13 @@ newer "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts && cp "$K/lib/wbcom-kit.ts" src
 newer "$K/styles/wbcom-base.css" src/styles/wbcom-base.css && cp "$K/styles/wbcom-base.css" src/styles/wbcom-base.css
 ```
 
-Create the `docs` and `faq` collections with the same fields the lab seed uses, or run `site-kit/seed/collection.mjs` and `site-kit/seed/articles.mjs` the way the lab reset does. Each collection must have search turned on.
+Create the `docs` and `faq` collections and the help categories from the site root:
+
+```bash
+npx emdash seed $K/seed/knowx-seed.json --no-content
+```
+
+Search is turned on for both. Existing collections are left alone. The seed never changes your menus. `scripts/make-seed.mjs` rebuilds the file from `seed/collection.mjs`.
 
 Add menu links for `/docs/` and `/docs/faq/`.
 

@@ -1,0 +1,114 @@
+{
+	"version": "1",
+	"meta": {
+		"name": "KnowX help center",
+		"description": "The docs and faq collections and help categories."
+	},
+	"collections": [
+		{
+			"slug": "docs",
+			"label": "Help articles",
+			"labelSingular": "Help article",
+			"description": "KnowX help center articles",
+			"icon": "book",
+			"urlPattern": "/docs/{slug}",
+			"supports": [
+				"drafts",
+				"revisions",
+				"preview",
+				"search",
+				"seo"
+			],
+			"fields": [
+				{
+					"slug": "title",
+					"label": "Title",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "excerpt",
+					"label": "Excerpt",
+					"type": "text",
+					"searchable": true
+				},
+				{
+					"slug": "content",
+					"label": "Content",
+					"type": "portableText",
+					"searchable": true
+				},
+				{
+					"slug": "applies_to_version",
+					"label": "Applies to version",
+					"type": "string"
+				}
+			]
+		},
+		{
+			"slug": "faq",
+			"label": "FAQs",
+			"labelSingular": "FAQ",
+			"description": "KnowX frequently asked questions",
+			"icon": "help",
+			"urlPattern": "/docs/faq/{slug}",
+			"supports": [
+				"drafts",
+				"revisions",
+				"preview",
+				"search",
+				"seo"
+			],
+			"fields": [
+				{
+					"slug": "title",
+					"label": "Question",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "answer",
+					"label": "Answer",
+					"type": "portableText",
+					"searchable": true
+				}
+			]
+		}
+	],
+	"taxonomies": [
+		{
+			"name": "doc_category",
+			"label": "Help categories",
+			"labelSingular": "Help category",
+			"hierarchical": true,
+			"collections": [
+				"docs"
+			],
+			"terms": [
+				{
+					"slug": "getting-started",
+					"label": "Getting started",
+					"description": "First steps after you open the product."
+				},
+				{
+					"slug": "using-the-product",
+					"label": "Using the product",
+					"description": "Everyday tasks and how to find things."
+				},
+				{
+					"slug": "account-and-billing",
+					"label": "Account and billing",
+					"description": "Your account, plans and invoices."
+				},
+				{
+					"slug": "first-week",
+					"label": "First week",
+					"description": "What to do in the first few days.",
+					"parent": "getting-started"
+				}
+			]
+		}
+	]
+}

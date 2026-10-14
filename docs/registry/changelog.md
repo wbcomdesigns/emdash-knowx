@@ -1,3 +1,8 @@
+## 0.1.3
+
+- Improve: one command creates the help collections. Guides for use cases and blog posts and pages.
+- Fix: Related no longer repeats Previous and Next; page results in help search open the right address; readable with the site's light mode on a dark device.
+
 ## 0.1.2
 
 - Improve: the chosen vote stays highlighted; a sent comment is confirmed. Even spacing under "Still need help?".
