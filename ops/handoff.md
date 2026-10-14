@@ -1,4 +1,4 @@
-# Handoff: KnowX (2026-10-14, 0.1.0 published)
+# Handoff: KnowX (2026-10-14, 0.1.1 published)
 
 You are the one agent for this repo. Read this, then work.
 
@@ -12,17 +12,20 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-**Live:** `@vapvarun.bsky.social/knowx@0.1.0` on `main`, tag `v0.1.0`. Merged from PR 18.
+**Live:** `@vapvarun.bsky.social/knowx@0.1.1` on `main`, tag `v0.1.1`. Merged from PR 21.
 
-- Registry release URI is on the publisher PDS. Listing check was in progress at publish time. Public page after approval: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/knowx
-- GitHub release: https://github.com/wbcomdesigns/emdash-knowx/releases/tag/v0.1.0
+- Registry release URI: `at://did:plc:2o6axbe264shvyedyhycyhya/com.emdashcms.experimental.package.release/knowx:0.1.1`
+- Public page after listing check: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/knowx
+- GitHub release: https://github.com/wbcomdesigns/emdash-knowx/releases/tag/v0.1.1
 - Lab: `../emdash-lab-knowx` on port 4333.
+
+0.1.1 covers team issues #22-#29 (shared kit + registry id, banner and shots, theme column, long search wrap, copy-link hover, one labelled search, Settings tabs, Insights stats and chart). Site owners must copy `site-kit/` again after they update.
 
 `#17` (in-text block) was dropped: a sandboxed registry package cannot ship `portableTextBlocks`.
 
 ## Next
 
-A registry release cannot be changed. File a new milestone for anything after 0.1.0. Patch only if a site owner is exposed.
+A registry release cannot be changed. File a new milestone for anything after 0.1.1. Patch only if a site owner is exposed.
 
 Never merge, tag or publish unless the owner asks.
 
