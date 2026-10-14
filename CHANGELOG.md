@@ -2,6 +2,16 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.1.3] - 2026-10-14
+
+Copy `site-kit/` again after you update.
+
+- Improve  - One command creates the help collections: `npx emdash seed <kit>/seed/knowx-seed.json --no-content`. It never changes your menus.
+- Improve  - User guides: use cases, and how to use KnowX with blog posts and pages.
+- Fix      - Related articles no longer repeat the articles shown as Previous and Next.
+- Fix      - Help search links page results to /pages/<slug>, where the EmDash blog template serves pages.
+- Fix      - The help center follows the site's light or dark choice, so it stays readable when a visitor picks light mode on a device set to dark.
+
 ## [0.1.2] - 2026-10-14
 
 Copy `site-kit/` again after you update.

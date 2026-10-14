@@ -179,7 +179,7 @@ export const SEARCH_ROUTES: Record<string, string> = {
 	docs: `${HELP_PATH}/:slug`,
 	faq: `${HELP_PATH}/faq#:slug`,
 	posts: "/posts/:slug",
-	pages: "/:slug",
+	pages: "/pages/:slug",
 };
 
 export function visitorIdFromCookie(raw: string | undefined): string {

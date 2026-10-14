@@ -40,7 +40,9 @@ const inCategory = category
 const here = inCategory.findIndex((item) => item.data.id === entry?.data.id);
 const previous = here > 0 ? inCategory[here - 1] : null;
 const next = here >= 0 ? inCategory[here + 1] : null;
-const related = inCategory.filter((item) => item.data.id !== entry?.data.id).slice(0, 3);
+// Related leaves out this article and the ones already linked as Previous and Next.
+const shown = new Set([entry?.data.id, previous?.data.id, next?.data.id]);
+const related = inCategory.filter((item) => !shown.has(item.data.id)).slice(0, 3);
 const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, copyCode: kx.copyCode, copiedCode: kx.copiedCode });
 ---
 

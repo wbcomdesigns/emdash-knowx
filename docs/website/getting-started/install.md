@@ -25,7 +25,13 @@ KnowX reads two collections:
 | Help articles (`docs`) | Title, Excerpt, Content, Applies to version | Articles |
 | FAQs (`faq`) | Question, Answer | The FAQ page |
 
-plus a **Help categories** taxonomy for topics. The kit includes a script that creates all of them with search turned on: `site-kit/seed/collection.mjs` (and `site-kit/seed/articles.mjs` for sample articles). Or create them by hand in **Content Types** with the same fields, and turn search on for both.
+plus a **Help categories** taxonomy for topics. The kit ships them as one seed file. From your site's root folder, run:
+
+```bash
+npx emdash seed path/to/emdash-knowx/site-kit/seed/knowx-seed.json --no-content
+```
+
+It creates both collections with search turned on and the **Help categories** taxonomy, and leaves anything you already have alone. Leave out `--no-content` to also add four starter help categories you can rename. The seed never changes your menus.
 
 ## Step 3: copy the site kit
 
