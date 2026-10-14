@@ -13,12 +13,32 @@ afterEach(async () => {
 });
 
 function texts(page: { blocks: Array<unknown> }): string {
-	return page.blocks
-		.map((block) => {
-			const row = block as { text?: unknown; title?: unknown; description?: unknown };
-			return [row.text, row.title, row.description].filter(Boolean).join(" ");
-		})
-		.join("\n");
+	const walk = (blocks: Array<unknown>): string[] =>
+		blocks.flatMap((block) => {
+			const row = block as {
+				text?: unknown;
+				title?: unknown;
+				description?: unknown;
+				items?: Array<{ label?: unknown; value?: unknown }>;
+				columns?: Array<Array<unknown>>;
+				panels?: Array<{ label?: unknown; blocks?: Array<unknown> }>;
+			};
+			const here = [
+				row.text,
+				row.title,
+				row.description,
+				...(row.items || []).flatMap((item) => [item.label, item.value]),
+				...(row.panels || []).map((panel) => panel.label),
+			]
+				.filter(Boolean)
+				.map(String);
+			const nested = [
+				...(row.columns || []).flatMap((col) => walk(col)),
+				...(row.panels || []).flatMap((panel) => walk(panel.blocks || [])),
+			];
+			return [...here, ...nested];
+		});
+	return walk(page.blocks).join("\n");
 }
 
 describe("seed", () => {
@@ -81,8 +101,8 @@ describe("admin insights", () => {
 		await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
 		const page = await site.rt.admin.loadPage("/insights");
 		const body = texts(page);
-		expect(body).toMatch(/1 published help article/);
-		expect(body).toMatch(/FAQ collection is ready/);
+		expect(body).toMatch(/Articles/);
+		expect(body).not.toMatch(/FAQ collection is ready/);
 		expect(body).toMatch(/No weak articles yet/);
 		expect(body).toMatch(/No comments yet/);
 		expect(body).toMatch(/No searches yet/);
@@ -115,6 +135,10 @@ describe("settings", () => {
 		expect(page).toContain("Posts");
 		expect(page).not.toMatch(/"label":"docs"/);
 		expect(page).toContain("Ask for a comment after a No vote");
+		expect(page).toContain("Feedback");
+		expect(page).toContain("Still need help");
+		expect(page).not.toContain("Each group saves on its own.");
+		expect(page).not.toContain("(search off)");
 		expect((await site.rt.admin.loadPage("/insights")).blocks.map((block) => block.type)).not.toContain("form");
 
 		const admin = (input: Record<string, unknown>) => site.call("admin", input);

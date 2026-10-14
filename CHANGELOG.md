@@ -13,6 +13,11 @@ Copy `site-kit/` again after you update.
 - Fix      - The kit finds the plugin at the registry id or the name knowx, so a registry install no longer 404s on config, vote and search log.
 - Fix      - Breadcrumbs put a space after each slash (Help / Account, not Help /Account).
 - Fix      - A search hit shows a line from the article when the search snippet only repeats the title.
+- Fix      - Help pages sit in the theme column (same max width and side padding as the header).
+- Fix      - A long search query wraps and is capped at 100 characters in the heading (80 in the log).
+- Fix      - Copy link shows on hover or focus. Headings have space above them. Previous and Next stay in the column.
+- Fix      - The search results page has one labelled field. Live search has a name for screen readers.
+- Fix      - Settings uses tabs. Insights opens with counts and a search chart, not setup sentences.
 - Fix      - The kit paints its own canvas in dark, so Topics and article body stay readable when the host page stays light.
 - Fix      - Article copy-link is an icon with a name, not a "Copy link" pill inside the heading.
 - Fix      - Missing-article page uses a heading. Article search uses the same card as home.

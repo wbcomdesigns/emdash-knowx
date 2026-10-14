@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { resultSnippet, snippetPlain } from "../site-kit/lib/knowx";
+import { kx } from "../site-kit/lib/knowx-strings";
 
 describe("search result line", () => {
 	it("hides a snippet that only repeats the title", () => {
@@ -17,5 +18,12 @@ describe("search result line", () => {
 	it("treats an empty or missing snippet as no line", () => {
 		expect(resultSnippet("Invite your team")).toBe("");
 		expect(resultSnippet("Invite your team", "   ")).toBe("");
+	});
+
+	it("caps a long search heading at 100 characters", () => {
+		const q = "a".repeat(400);
+		const heading = kx.searchResultsFor(q);
+		expect(heading.length).toBeLessThan(130);
+		expect(heading).toContain("…");
 	});
 });

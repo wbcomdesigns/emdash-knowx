@@ -2,9 +2,9 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.1 team issues #22/#23/#24 on lab :4333 after reset. `npm test` 23 passed. `prove-lab.sh` passed (including search excerpt line).
+**Last walk:** 2026-10-14, 0.1.1 team issues #22-#29 on lab :4333. `npm test` 24 passed. `prove-lab.sh` passed.
 
-Walked in the browser: G-1 (search welcome), G-2 (no-results), G-4 (Yes vote), G-7 (help home Topics + articles), G-8 (Help / Getting started / First week), G-10 (missing article URL), #22.2 (search line is the excerpt, not a repeated title), #22.3 (space after each breadcrumb slash). Presentation: 1440/768/390, light and dark, no horizontal overflow on home and article. Registry shots retaken at 1440x900 from the styled blog lab. Banner 3000x1000.
+Walked in the browser: G-1, G-2, G-4, G-7, G-8, G-10, #22.2 (excerpt line), #22.3 (Help / Topic), #25 (`.kx` max-width 1200, x=120 at 1440, same as `--wide-width`), #26 (400-letter query, no sideways scroll, heading capped), #27 (copy link opacity 0 until hover, heading gap 28px, pager inside the column), #28 (one labelled search field on results). Presentation: 1440/768/390, light and dark, no horizontal overflow. Registry shots 1440x900 from the styled blog lab. Banner 3000x1000.
 
 Checked at route level: prove-lab (health, admin Insights/Settings/widget, products, config, log_search, helpful, search labels, posts coverage, nested first-week). Kit fetch tests: registry id `r_2bzw2y6sgiq5c455`, local slug fallback, never remember a failure. A-1 empty Insights tables in tests. A-4 missing collection in tests.
 
