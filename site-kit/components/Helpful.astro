@@ -35,8 +35,8 @@ const copy = jsonForScript({
 	<h2 id="kx-helpful-h">{kx.helpfulQuestion}</h2>
 	<p class="wb-sr" data-kx-tally hidden></p>
 	<div class="wb-summary">
-		<button class="wb-btn" type="button" data-kx-vote="yes">{kx.helpfulYes}</button>
-		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="no">{kx.helpfulNo}</button>
+		<button class="wb-btn" type="button" data-kx-vote="yes" aria-pressed="false">{kx.helpfulYes}</button>
+		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="no" aria-pressed="false">{kx.helpfulNo}</button>
 	</div>
 	<form data-kx-comment hidden>
 		<label class="wb-label" for={`kx-comment-${id}`}>{kx.helpfulCommentLabel}</label>
@@ -79,11 +79,12 @@ const copy = jsonForScript({
 	async function tally(root: HTMLElement, id: string, line: string) {
 		const data = await api("knowx", `tally?id=${encodeURIComponent(id)}`);
 		const box = root.querySelector<HTMLElement>("[data-kx-tally]");
-		if (box && data.ok) {
+		// No phrase (an older strings file): leave the screen-reader line hidden rather than empty.
+		if (box && data.ok && line) {
 			const yes = Number(data.yes) || 0;
 			const total = yes + (Number(data.no) || 0);
 			box.hidden = false;
-			box.textContent = line.replace("{yes}", String(yes)).replace("{total}", String(total));
+			box.textContent = line.replaceAll("{yes}", String(yes)).replaceAll("{total}", String(total));
 		}
 	}
 
@@ -119,7 +120,8 @@ const copy = jsonForScript({
 				return;
 			}
 			status.dataset.tone = "success";
-			status.textContent = (comment ? copy.commentThanks : copy.thanks) || "";
+			// An older strings file may not have the newer phrases yet.
+			status.textContent = (comment ? copy.commentThanks || copy.thanks : copy.thanks) || "";
 			markChoice(root, helpful);
 			if (commentForm) commentForm.hidden = helpful || !askComment || Boolean(comment);
 			if (contact) contact.hidden = helpful || !contactUrl;
