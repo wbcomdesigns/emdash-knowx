@@ -2,6 +2,16 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.1.2] - 2026-10-14
+
+Copy `site-kit/` again after you update.
+
+- Improve  - After a vote the chosen button stays highlighted. A sent comment is confirmed and its box closes.
+- Improve  - "Still need help?" under an article has even spacing.
+- Improve  - Screen readers hear how many readers found an article helpful, in words.
+- Improve  - User guides for site owners in docs/website.
+- Fix      - The install guide copies the shared kit files only when the site's copy is older.
+
 ## [0.1.1] - 2026-10-14
 
 Copy `site-kit/` again after you update.

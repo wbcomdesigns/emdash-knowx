@@ -1,3 +1,9 @@
+## 0.1.2
+
+- Improve: the chosen vote stays highlighted; a sent comment is confirmed. Even spacing under "Still need help?".
+- Fix: the install guide never replaces another plugin's newer shared kit files.
+- New: full user guides.
+
 ## 0.1.1
 
 - Improve: help home shows topics and articles. Cards, FAQ and search results fill the page.

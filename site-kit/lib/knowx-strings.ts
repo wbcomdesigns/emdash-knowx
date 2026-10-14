@@ -48,6 +48,9 @@ export const kx = {
 	helpfulYes: "Yes",
 	helpfulNo: "No",
 	helpfulThanks: "Thanks for the feedback.",
+	helpfulCommentThanks: "Thanks. Your comment was sent.",
+	/** Read by screen readers only: "{yes} of {total} readers found this helpful." */
+	helpfulTally: "{yes} of {total} readers found this helpful.",
 	helpfulCommentLabel: "What was missing?",
 	helpfulCommentHint: "Optional. Up to 500 characters.",
 	helpfulCommentSend: "Send comment",

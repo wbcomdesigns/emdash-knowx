@@ -17,6 +17,8 @@ const copy = jsonForScript({
 	yes: kx.helpfulYes,
 	no: kx.helpfulNo,
 	thanks: kx.helpfulThanks,
+	commentThanks: kx.helpfulCommentThanks,
+	tally: kx.helpfulTally,
 	commentLabel: kx.helpfulCommentLabel,
 	commentHint: kx.helpfulCommentHint,
 	commentSend: kx.helpfulCommentSend,
@@ -74,13 +76,24 @@ const copy = jsonForScript({
 		}
 	}
 
-	async function tally(root: HTMLElement, id: string) {
+	async function tally(root: HTMLElement, id: string, line: string) {
 		const data = await api("knowx", `tally?id=${encodeURIComponent(id)}`);
 		const box = root.querySelector<HTMLElement>("[data-kx-tally]");
 		if (box && data.ok) {
+			const yes = Number(data.yes) || 0;
+			const total = yes + (Number(data.no) || 0);
 			box.hidden = false;
-			box.textContent = `${Number(data.yes) || 0} / ${Number(data.no) || 0}`;
+			box.textContent = line.replace("{yes}", String(yes)).replace("{total}", String(total));
 		}
+	}
+
+	/** The button for the vote that counted looks chosen; the other one goes quiet. */
+	function markChoice(root: HTMLElement, helpful: boolean) {
+		root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]").forEach((button) => {
+			const chosen = (button.dataset.kxVote === "yes") === helpful;
+			button.setAttribute("aria-pressed", String(chosen));
+			button.classList.toggle("wb-btn--quiet", !chosen);
+		});
 	}
 
 	document.querySelectorAll<HTMLElement>("[data-kx-helpful]").forEach(async (root) => {
@@ -94,7 +107,7 @@ const copy = jsonForScript({
 		const askComment = config.askComment !== false;
 		const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
 		if (contactLink && contactUrl) contactLink.href = contactUrl;
-		await tally(root, id);
+		await tally(root, id, copy.tally || "");
 
 		const vote = async (helpful: boolean, comment = "") => {
 			if (!status) return;
@@ -106,10 +119,11 @@ const copy = jsonForScript({
 				return;
 			}
 			status.dataset.tone = "success";
-			status.textContent = copy.thanks || "";
-			if (commentForm) commentForm.hidden = helpful || !askComment;
+			status.textContent = (comment ? copy.commentThanks : copy.thanks) || "";
+			markChoice(root, helpful);
+			if (commentForm) commentForm.hidden = helpful || !askComment || Boolean(comment);
 			if (contact) contact.hidden = helpful || !contactUrl;
-			await tally(root, id);
+			await tally(root, id, copy.tally || "");
 		};
 
 		root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]").forEach((button) => {
