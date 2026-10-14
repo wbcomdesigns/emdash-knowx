@@ -20,12 +20,16 @@ async function fresh() {
 
 afterEach(() => vi.unstubAllGlobals());
 
+// These cases are browser calls (relative addresses). A server-side call is tested on its own below.
+const inBrowser = () => vi.stubGlobal("window", {});
+
 describe("kit finds KnowX routes on any install", () => {
 	it("computes the published registry id", async () => {
 		expect(await registryPluginId("knowx")).toBe("r_2bzw2y6sgiq5c455");
 	});
 
 	it("uses the registry id on a registry install and remembers it", async () => {
+		inBrowser();
 		const { id, call } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes(id) ? ok() : missing()));
@@ -35,6 +39,7 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("falls back to the name on a local install", async () => {
+		inBrowser();
 		const { call } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes("/knowx/") ? ok() : missing()));
@@ -45,6 +50,7 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("never remembers a failure, and forgets an address that stops answering", async () => {
+		inBrowser();
 		const { id, call } = await fresh();
 		let up = false;
 		const seen: string[] = [];
@@ -59,6 +65,7 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("keeps KnowX's own 404 answer instead of trying another address", async () => {
+		inBrowser();
 		const { call } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal(
@@ -73,11 +80,27 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("sends server calls through pluginFetch with the page origin", async () => {
+		inBrowser();
 		const { id, pluginJson } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes(id) ? ok() : missing()));
 		const data = await pluginJson("http://localhost:4333", "config");
 		expect(data).toMatchObject({ ok: true });
 		expect(seen[0]).toBe(`http://localhost:4333/_emdash/api/plugins/${id}/config`);
+	});
+});
+
+describe("server-side calls", () => {
+	it("are refused without a trusted site address, so a request's Host header is never called", async () => {
+		vi.resetModules();
+		const kit = await import("../site-kit/lib/wbcom-kit");
+		const call = (path: string, init: RequestInit, origin: string) => kit.pluginFetch("knowx", path, init, origin);
+		const seen: string[] = [];
+		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), new Response(JSON.stringify({ success: true, data: { ok: true } }), { status: 200 })));
+		expect((await call("config", {}, "")).status).toBe(503);
+		expect((await call("config", {}, "http://evil.internal/path")).status).toBe(503);
+		expect(seen).toHaveLength(0);
+		expect((await call("config", {}, "https://fieldnote.example")).status).toBe(200);
+		expect(seen[0]).toMatch(/^https:\/\/fieldnote\.example\/_emdash\/api\/plugins\//);
 	});
 });

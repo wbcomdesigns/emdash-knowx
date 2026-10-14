@@ -2,6 +2,12 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.1.4] - 2026-10-14
+
+Copy `site-kit/` again after you update.
+
+- Security - Help pages read their settings and log searches by calling the Site URL set in EmDash settings, never the address a visitor's request names. Set Settings, Site URL on a live site.
+
 ## [0.1.3] - 2026-10-14
 
 Copy `site-kit/` again after you update.

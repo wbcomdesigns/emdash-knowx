@@ -1,3 +1,7 @@
+## 0.1.4
+
+- Security: server-side calls use the Site URL from EmDash settings, never the request's address. Copy the kit again after updating.
+
 ## 0.1.3
 
 - Improve: one command creates the help collections. Guides for use cases and blog posts and pages.
