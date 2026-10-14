@@ -33,6 +33,11 @@ Everything works for guests. Signing in changes nothing.
 
 Registry plugins cannot add pages to a site by themselves, which is why the pages come as a site kit.
 
+## Ideas and guides
+
+- [Use cases](use-cases.md): five common setups and the settings to pick.
+- [Posts and pages](posts-and-pages.md): add the pages to your menu and link to them from posts.
+
 ## Next step
 
 [Install KnowX](install.md).
