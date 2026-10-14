@@ -6,7 +6,7 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 
 Copy `site-kit/` again after you update.
 
-- Security - Help pages read their settings and log searches by calling the Site URL set in EmDash settings, never the address a visitor's request names. Set Settings, Site URL on a live site.
+- Security - Help pages read their settings and log searches inside EmDash itself, with no web request, so a visitor can never make the site call another address.
 
 ## [0.1.3] - 2026-10-14
 

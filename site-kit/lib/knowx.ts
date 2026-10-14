@@ -1,4 +1,4 @@
-import { pluginFetch } from "./wbcom-kit";
+import { callPluginRoute } from "./wbcom-kit";
 import { kx, kindLabel } from "./knowx-strings";
 
 export const HELP_PATH = "/docs";
@@ -30,18 +30,9 @@ function unwrap(json: unknown): Record<string, unknown> {
 	return row;
 }
 
-export async function pluginJson(origin: string, path: string, body?: unknown): Promise<Record<string, unknown>> {
-	const res = await pluginFetch(
-		PLUGIN,
-		path,
-		{
-			method: body ? "POST" : "GET",
-			headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
-			body: body ? JSON.stringify(body) : undefined,
-		},
-		origin.replace(/\/$/, ""),
-	);
-	return unwrap(await res.json().catch(() => null));
+/** A KnowX public route, run inside the server from an Astro page (pass Astro.locals). */
+export async function pluginJson(locals: unknown, path: string, body?: unknown): Promise<Record<string, unknown>> {
+	return (await callPluginRoute(locals, PLUGIN, path, body)) as Record<string, unknown>;
 }
 
 /** Search snippet with marks stripped. Empty when it only repeats the title. */
@@ -61,9 +52,9 @@ export function resultSnippet(title: string, snippet?: string): string {
 	return snippet;
 }
 
-export async function loadConfig(origin: string): Promise<KnowxConfig> {
+export async function loadConfig(locals: unknown): Promise<KnowxConfig> {
 	try {
-		const data = await pluginJson(origin, "config");
+		const data = await pluginJson(locals, "config");
 		const chosen = Array.isArray(data.searchCollections)
 			? data.searchCollections.filter((item): item is string => typeof item === "string" && item.length > 0)
 			: [];
@@ -78,9 +69,9 @@ export async function loadConfig(origin: string): Promise<KnowxConfig> {
 	}
 }
 
-export async function loadProducts(origin: string): Promise<{ productLayer: boolean; items: ProductItem[] }> {
+export async function loadProducts(locals: unknown): Promise<{ productLayer: boolean; items: ProductItem[] }> {
 	try {
-		const data = await pluginJson(origin, "products");
+		const data = await pluginJson(locals, "products");
 		const items = Array.isArray(data.items)
 			? data.items.flatMap((item) => {
 					if (!item || typeof item !== "object") return [];

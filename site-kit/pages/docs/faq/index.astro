@@ -7,11 +7,8 @@ import { HELP_PATH, jsonForScript, loadConfig } from "../../../lib/knowx";
 import { kx } from "../../../lib/knowx-strings";
 import "../../../styles/wbcom-base.css";
 import "../../../styles/knowx.css";
-import { serverOrigin } from "../../../lib/wbcom-kit";
-// Server-side calls go to the site address from settings, never the request's Host header.
-const origin = serverOrigin((await getSiteSettings())?.url, Astro.url);
 
-const config = await loadConfig(origin);
+const config = await loadConfig(Astro.locals);
 const { entries, cacheHint } = await getEmDashCollection("faq", { orderBy: { title: "asc" }, limit: 200 });
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 

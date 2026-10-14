@@ -79,28 +79,49 @@ describe("kit finds KnowX routes on any install", () => {
 		expect(seen).toHaveLength(1);
 	});
 
-	it("sends server calls through pluginFetch with the page origin", async () => {
-		inBrowser();
+	it("sends server calls through EmDash's in-process route handler, never fetch", async () => {
 		const { id, pluginJson } = await fresh();
 		const seen: string[] = [];
-		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes(id) ? ok() : missing()));
-		const data = await pluginJson("http://localhost:4333", "config");
+		const routed: string[] = [];
+		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), ok()));
+		const locals = {
+			emdash: {
+				handlePublicPluginApiRoute: async (pluginId: string, method: string, path: string) => (
+					routed.push(`${method} ${pluginId}/${path}`),
+					pluginId === id ? { success: true, data: { ok: true, contactUrl: "" } } : { success: false, error: { code: "NOT_FOUND", message: "Plugin route not found" } }
+				),
+			},
+		};
+		const data = await pluginJson(locals, "config");
 		expect(data).toMatchObject({ ok: true });
-		expect(seen[0]).toBe(`http://localhost:4333/_emdash/api/plugins/${id}/config`);
+		expect(routed).toEqual([`GET ${id}/config`]);
+		expect(seen).toHaveLength(0);
 	});
+
 });
 
 describe("server-side calls", () => {
-	it("are refused without a trusted site address, so a request's Host header is never called", async () => {
+	it("pluginFetch refuses every server-side call, so no address is ever fetched from server code", async () => {
 		vi.resetModules();
 		const kit = await import("../site-kit/lib/wbcom-kit");
-		const call = (path: string, init: RequestInit, origin: string) => kit.pluginFetch("knowx", path, init, origin);
 		const seen: string[] = [];
-		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), new Response(JSON.stringify({ success: true, data: { ok: true } }), { status: 200 })));
-		expect((await call("config", {}, "")).status).toBe(503);
-		expect((await call("config", {}, "http://evil.internal/path")).status).toBe(503);
+		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), ok()));
+		expect((await kit.pluginFetch("knowx", "config")).status).toBe(503);
 		expect(seen).toHaveLength(0);
-		expect((await call("config", {}, "https://fieldnote.example")).status).toBe(200);
-		expect(seen[0]).toMatch(/^https:\/\/fieldnote\.example\/_emdash\/api\/plugins\//);
+	});
+
+	it("callPluginRoute falls back from the registry id to the plugin name, and says when it is not installed", async () => {
+		vi.resetModules();
+		const kit = await import("../site-kit/lib/wbcom-kit");
+		const id = await kit.registryPluginId("knowx");
+		const routed: string[] = [];
+		const handler = (installed: string) => async (pluginId: string, _method: string, path: string) => (
+			routed.push(`${pluginId}/${path}`),
+			pluginId === installed ? { success: true, data: { ok: true } } : { success: false, error: { code: "NOT_FOUND", message: "Plugin route not found" } }
+		);
+		expect(await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("knowx") } }, "knowx", "config")).toMatchObject({ ok: true });
+		expect(routed).toEqual([`${id}/config`, "knowx/config"]);
+		expect(await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("other") } }, "knowx", "config")).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+		expect(await kit.callPluginRoute({}, "knowx", "config")).toMatchObject({ ok: false, error: { code: "UNAVAILABLE" } });
 	});
 });

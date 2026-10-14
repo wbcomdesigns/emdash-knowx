@@ -6,16 +6,13 @@ import { HELP_PATH, loadConfig } from "../../../lib/knowx";
 import { kx } from "../../../lib/knowx-strings";
 import "../../../styles/wbcom-base.css";
 import "../../../styles/knowx.css";
-import { serverOrigin } from "../../../lib/wbcom-kit";
-// Server-side calls go to the site address from settings, never the request's Host header.
-const origin = serverOrigin((await getSiteSettings())?.url, Astro.url);
 
 type Term = { slug: string; label: string; description?: string; parentId?: string; children: Term[]; count?: number };
 
 const raw = decodeSlug(Astro.params.slug) || "";
 const slugs = raw.split("/").filter(Boolean);
 const leaf = slugs[slugs.length - 1];
-const config = await loadConfig(origin);
+const config = await loadConfig(Astro.locals);
 const terms = (await getTaxonomyTerms("doc_category").catch(() => [])) as Term[];
 
 const flatten = (items: Term[], trail: Term[] = []): Array<{ term: Term; trail: Term[] }> =>
