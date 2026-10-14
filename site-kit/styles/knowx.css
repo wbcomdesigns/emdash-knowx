@@ -276,6 +276,19 @@
 	cursor: pointer;
 }
 
+/* "Still need help?" (under the vote and after an empty search): heading, line and button evenly spaced. */
+.kx [data-kx-contact]:not([hidden]),
+[data-kx-helpful] [data-kx-contact]:not([hidden]) {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.kx [data-kx-contact] > *,
+[data-kx-helpful] [data-kx-contact] > * {
+	margin: 0;
+}
+
+
 @media (hover: hover) {
 	.kx-heading-tools {
 		opacity: 0;

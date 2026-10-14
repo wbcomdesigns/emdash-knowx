@@ -1,0 +1,75 @@
+{
+  "product": "KnowX for EmDash",
+  "productType": "plugin",
+  "shortId": "knxem",
+  "slug": "knowx-emdash",
+  "tagline": "Turn your EmDash site into a help center visitors can search.",
+  "note": "GitHub-only documentation. Metadata only. No publish or sync target.",
+  "images_dir": "images",
+  "version": "0.1.2",
+  "sections": [
+    {
+      "name": "Getting Started",
+      "folder": "getting-started",
+      "description": "What KnowX does, how to install it, and your first help articles.",
+      "pages": [
+        { "slug": "introduction", "title": "Introduction" },
+        { "slug": "install", "title": "Install KnowX" },
+        { "slug": "first-articles", "title": "Your first help articles" }
+      ]
+    },
+    {
+      "name": "Using KnowX",
+      "folder": "features",
+      "description": "The help pages your visitors use, and the Insights screen you read.",
+      "pages": [
+        { "slug": "help-pages", "title": "Help home, topics and articles" },
+        { "slug": "search", "title": "Search" },
+        { "slug": "faq-page", "title": "The FAQ page" },
+        { "slug": "feedback", "title": "Was this helpful and Still need help" },
+        { "slug": "insights", "title": "Insights" }
+      ]
+    },
+    {
+      "name": "Settings",
+      "folder": "settings",
+      "description": "Every KnowX setting, what it controls, and its default.",
+      "pages": [
+        { "slug": "settings-reference", "title": "Settings reference" }
+      ]
+    },
+    {
+      "name": "Customize",
+      "folder": "customize",
+      "description": "Change the words visitors see and fit the help pages into your design.",
+      "pages": [
+        { "slug": "wording-and-design", "title": "Wording and design" }
+      ]
+    },
+    {
+      "name": "FAQ",
+      "folder": "faq",
+      "description": "Short answers to the questions site owners ask most.",
+      "pages": [
+        { "slug": "faq", "title": "Frequently asked questions" }
+      ]
+    },
+    {
+      "name": "Troubleshooting",
+      "folder": "troubleshooting",
+      "description": "What to check when a help page, search or vote does not work.",
+      "pages": [
+        { "slug": "troubleshooting", "title": "Troubleshooting" }
+      ]
+    },
+    {
+      "name": "What's New",
+      "folder": "whats-new",
+      "description": "What changed in each release, newest first.",
+      "pages": [
+        { "slug": "0-1-2", "title": "What's new in 0.1.2" },
+        { "slug": "0-1-1", "title": "What's new in 0.1.1" }
+      ]
+    }
+  ]
+}

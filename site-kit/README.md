@@ -19,13 +19,11 @@ mkdir -p src/layouts src/styles src/lib src/pages/docs src/pages/docs/category s
 cp $K/layouts/KnowXLayout.astro src/layouts/KnowXLayout.astro
 
 cp $K/styles/knowx.css src/styles/knowx.css
-cp $K/styles/wbcom-base.css src/styles/wbcom-base.css
 
 cp $K/lib/knowx.ts src/lib/knowx.ts
 cp $K/lib/knowx-strings.ts src/lib/knowx-strings.ts
 cp $K/lib/knowx-products.ts src/lib/knowx-products.ts
 cp $K/lib/knowx-icons.ts src/lib/knowx-icons.ts
-cp $K/lib/wbcom-kit.ts src/lib/wbcom-kit.ts
 
 cp $K/components/*.astro src/components/
 cp $K/pages/docs/index.astro src/pages/docs/index.astro
@@ -33,6 +31,14 @@ cp $K/pages/docs/search.astro src/pages/docs/search.astro
 cp $K/pages/docs/\[...slug\].astro src/pages/docs/
 cp $K/pages/docs/category/\[...slug\].astro src/pages/docs/category/
 cp $K/pages/docs/faq/index.astro src/pages/docs/faq/index.astro
+
+# The two shared files are used by every Wbcom plugin. Line 1 carries a number
+# (wbcom-shared: N). Copy only when the site has no copy yet or an older one,
+# so another plugin's newer copy is never replaced.
+shared() { v="$(sed -n '1s/.*wbcom-shared: *\([0-9]*\).*/\1/p' "$1" 2>/dev/null)"; echo "${v:-0}"; }
+newer() { [ ! -f "$2" ] || [ "$(shared "$1")" -ge "$(shared "$2")" ]; }
+newer "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts && cp "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts
+newer "$K/styles/wbcom-base.css" src/styles/wbcom-base.css && cp "$K/styles/wbcom-base.css" src/styles/wbcom-base.css
 ```
 
 Create the `docs` and `faq` collections with the same fields the lab seed uses, or run `site-kit/seed/collection.mjs` and `site-kit/seed/articles.mjs` the way the lab reset does. Each collection must have search turned on.
