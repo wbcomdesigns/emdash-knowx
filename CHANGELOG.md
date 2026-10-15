@@ -2,7 +2,7 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
-## [0.1.4] - 2026-10-14
+## [0.1.4] - 2026-10-15
 
 Copy `site-kit/` again after you update.
 
