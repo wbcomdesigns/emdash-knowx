@@ -25,9 +25,8 @@ You are the one agent for this repo. Read this, then work.
 
 ## Next
 
-A registry release cannot be changed. File a new milestone for anything after 0.1.1. Patch only if a site owner is exposed.
-
-Never merge, tag or publish unless the owner asks.
+- 0.1.4 is live (2026-10-15): help pages read their settings and log searches inside EmDash, with no web request.
+- No open issues. A registry release cannot be changed: file a new milestone for anything after 0.1.4.
 
 ## How to work
 
