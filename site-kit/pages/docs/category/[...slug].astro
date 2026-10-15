@@ -1,5 +1,5 @@
 ---
-import { decodeSlug, getEmDashCollection, getTaxonomyTerms } from "emdash";
+import { decodeSlug, getEmDashCollection, getTaxonomyTerms, getSiteSettings } from "emdash";
 import DocSearch from "../../../components/DocSearch.astro";
 import Layout from "../../../layouts/KnowXLayout.astro";
 import { HELP_PATH, loadConfig } from "../../../lib/knowx";
@@ -12,7 +12,7 @@ type Term = { slug: string; label: string; description?: string; parentId?: stri
 const raw = decodeSlug(Astro.params.slug) || "";
 const slugs = raw.split("/").filter(Boolean);
 const leaf = slugs[slugs.length - 1];
-const config = await loadConfig(Astro.url.origin);
+const config = await loadConfig(Astro.locals);
 const terms = (await getTaxonomyTerms("doc_category").catch(() => [])) as Term[];
 
 const flatten = (items: Term[], trail: Term[] = []): Array<{ term: Term; trail: Term[] }> =>

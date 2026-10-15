@@ -1,5 +1,5 @@
 ---
-import { getEmDashCollection, search } from "emdash";
+import { getEmDashCollection, search, getSiteSettings } from "emdash";
 import StillNeedHelp from "../../components/StillNeedHelp.astro";
 import Layout from "../../layouts/KnowXLayout.astro";
 import { HELP_PATH, loadConfig, pluginJson, resultHref, resultKind, resultSnippet, SEARCH_ROUTES, visitorIdFromCookie, VID_COOKIE } from "../../lib/knowx";
@@ -9,7 +9,7 @@ import "../../styles/knowx.css";
 
 const q = (Astro.url.searchParams.get("q") || "").trim();
 const honeypot = Astro.url.searchParams.get("website") || "";
-const config = await loadConfig(Astro.url.origin);
+const config = await loadConfig(Astro.locals);
 let items: Array<{ collection: string; slug: string | null; title?: string; snippetHtml: string; excerpt: string }> = [];
 let failed = false;
 if (q) {
@@ -37,7 +37,7 @@ if (q) {
 	if (!Astro.cookies.get(VID_COOKIE)?.value) {
 		Astro.cookies.set(VID_COOKIE, vid, { path: "/", maxAge: 31536000, sameSite: "lax" });
 	}
-	await pluginJson(Astro.url.origin, "log_search", {
+	await pluginJson(Astro.locals, "log_search", {
 		q,
 		found: items.length,
 		website: honeypot,

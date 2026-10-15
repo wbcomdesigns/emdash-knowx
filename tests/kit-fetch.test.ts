@@ -20,12 +20,16 @@ async function fresh() {
 
 afterEach(() => vi.unstubAllGlobals());
 
+// These cases are browser calls (relative addresses). A server-side call is tested on its own below.
+const inBrowser = () => vi.stubGlobal("window", {});
+
 describe("kit finds KnowX routes on any install", () => {
 	it("computes the published registry id", async () => {
 		expect(await registryPluginId("knowx")).toBe("r_2bzw2y6sgiq5c455");
 	});
 
 	it("uses the registry id on a registry install and remembers it", async () => {
+		inBrowser();
 		const { id, call } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes(id) ? ok() : missing()));
@@ -35,6 +39,7 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("falls back to the name on a local install", async () => {
+		inBrowser();
 		const { call } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes("/knowx/") ? ok() : missing()));
@@ -45,6 +50,7 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("never remembers a failure, and forgets an address that stops answering", async () => {
+		inBrowser();
 		const { id, call } = await fresh();
 		let up = false;
 		const seen: string[] = [];
@@ -59,6 +65,7 @@ describe("kit finds KnowX routes on any install", () => {
 	});
 
 	it("keeps KnowX's own 404 answer instead of trying another address", async () => {
+		inBrowser();
 		const { call } = await fresh();
 		const seen: string[] = [];
 		vi.stubGlobal(
@@ -72,12 +79,49 @@ describe("kit finds KnowX routes on any install", () => {
 		expect(seen).toHaveLength(1);
 	});
 
-	it("sends server calls through pluginFetch with the page origin", async () => {
+	it("sends server calls through EmDash's in-process route handler, never fetch", async () => {
 		const { id, pluginJson } = await fresh();
 		const seen: string[] = [];
-		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), url.includes(id) ? ok() : missing()));
-		const data = await pluginJson("http://localhost:4333", "config");
+		const routed: string[] = [];
+		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), ok()));
+		const locals = {
+			emdash: {
+				handlePublicPluginApiRoute: async (pluginId: string, method: string, path: string) => (
+					routed.push(`${method} ${pluginId}/${path}`),
+					pluginId === id ? { success: true, data: { ok: true, contactUrl: "" } } : { success: false, error: { code: "NOT_FOUND", message: "Plugin route not found" } }
+				),
+			},
+		};
+		const data = await pluginJson(locals, "config");
 		expect(data).toMatchObject({ ok: true });
-		expect(seen[0]).toBe(`http://localhost:4333/_emdash/api/plugins/${id}/config`);
+		expect(routed).toEqual([`GET ${id}/config`]);
+		expect(seen).toHaveLength(0);
+	});
+
+});
+
+describe("server-side calls", () => {
+	it("pluginFetch refuses every server-side call, so no address is ever fetched from server code", async () => {
+		vi.resetModules();
+		const kit = await import("../site-kit/lib/wbcom-kit");
+		const seen: string[] = [];
+		vi.stubGlobal("fetch", async (url: string) => (seen.push(url), ok()));
+		expect((await kit.pluginFetch("knowx", "config")).status).toBe(503);
+		expect(seen).toHaveLength(0);
+	});
+
+	it("callPluginRoute falls back from the registry id to the plugin name, and says when it is not installed", async () => {
+		vi.resetModules();
+		const kit = await import("../site-kit/lib/wbcom-kit");
+		const id = await kit.registryPluginId("knowx");
+		const routed: string[] = [];
+		const handler = (installed: string) => async (pluginId: string, _method: string, path: string) => (
+			routed.push(`${pluginId}/${path}`),
+			pluginId === installed ? { success: true, data: { ok: true } } : { success: false, error: { code: "NOT_FOUND", message: "Plugin route not found" } }
+		);
+		expect(await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("knowx") } }, "knowx", "config")).toMatchObject({ ok: true });
+		expect(routed).toEqual([`${id}/config`, "knowx/config"]);
+		expect(await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("other") } }, "knowx", "config")).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+		expect(await kit.callPluginRoute({}, "knowx", "config")).toMatchObject({ ok: false, error: { code: "UNAVAILABLE" } });
 	});
 });

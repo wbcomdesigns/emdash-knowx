@@ -10,7 +10,7 @@ import "../../styles/wbcom-base.css";
 import "../../styles/knowx.css";
 
 const slug = decodeSlug(Astro.params.slug);
-const config = await loadConfig(Astro.url.origin);
+const config = await loadConfig(Astro.locals);
 const settings = await getSiteSettings();
 const zone = siteZone(settings?.timezone);
 const { entry, cacheHint } = slug ? await getEmDashEntry("docs", slug) : { entry: null, cacheHint: undefined };

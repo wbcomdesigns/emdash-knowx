@@ -1,5 +1,5 @@
 ---
-import { getEmDashCollection } from "emdash";
+import { getEmDashCollection, getSiteSettings } from "emdash";
 import { PortableText } from "emdash/ui";
 import DocSearch from "../../../components/DocSearch.astro";
 import Layout from "../../../layouts/KnowXLayout.astro";
@@ -8,7 +8,7 @@ import { kx } from "../../../lib/knowx-strings";
 import "../../../styles/wbcom-base.css";
 import "../../../styles/knowx.css";
 
-const config = await loadConfig(Astro.url.origin);
+const config = await loadConfig(Astro.locals);
 const { entries, cacheHint } = await getEmDashCollection("faq", { orderBy: { title: "asc" }, limit: 200 });
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 

@@ -9,10 +9,9 @@ import { useProductLayer } from "../../lib/knowx-products";
 import "../../styles/wbcom-base.css";
 import "../../styles/knowx.css";
 
-const origin = Astro.url.origin;
 const [config, products, terms, docs] = await Promise.all([
-	loadConfig(origin),
-	loadProducts(origin),
+	loadConfig(Astro.locals),
+	loadProducts(Astro.locals),
 	getTaxonomyTerms("doc_category").catch(() => []),
 	getEmDashCollection("docs", { orderBy: { published_at: "desc" }, limit: 200 }),
 ]);

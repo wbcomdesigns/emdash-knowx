@@ -1,3 +1,7 @@
+## 0.1.4
+
+- Security: server-side calls run inside EmDash with no web request. Copy the kit again after updating.
+
 ## 0.1.3
 
 - Improve: one command creates the help collections. Guides for use cases and blog posts and pages.
