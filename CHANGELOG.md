@@ -15,7 +15,7 @@ Copy the site kit again after you update: run the command from the install guide
 - New      - Top searches on Insights has a find box and pages 25 terms at a time.
 - Improve  - Insights counts every search and every vote, not only the latest 100 rows, and keeps empty searches listed for 30 days however busy other terms are.
 - Improve  - Insights says where to add the first help article and FAQ, by name, and says plainly when guests cannot vote on this host.
-- Improve  - The kit backs up your wording file only when you edited it, and says when it upgrades a shared file.
+- Improve  - Copying the kit again backs up only the kit files you edited, lists them, and says when it upgrades a shared file.
 - Improve  - Install guides start with what the site needs first (sandbox runner, Node 22.16, the kit at the release tag), explain which proxy header to trust, and were checked on EmDash 1.3.1.
 - Fix      - Help pages line up with the theme's header and footer instead of sitting 8px inside them.
 - Fix      - Kit buttons keep 4.5:1 contrast in dark mode on the blog template (shared kit styles version 4).
