@@ -571,5 +571,7 @@ export async function handleAdmin(input: unknown, ctx: PluginContext, guestWrite
 		return renderInsights(ctx, { toast: { message: "Noted. The setup card is now one line with the guide.", type: "success" } }, guestWrites);
 	}
 	if (page.includes("settings")) return renderSettings(ctx);
+	// Opening Insights starts Top searches at the first page with no find text.
+	if (asString(raw.type) === "page_load") await ctx.kv.delete("view:top");
 	return renderInsights(ctx, undefined, guestWrites);
 }

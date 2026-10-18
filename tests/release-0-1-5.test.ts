@@ -238,6 +238,39 @@ describe("search log (#41)", () => {
 		expect(JSON.stringify(reset)).not.toContain('"action_id":"top_prev"');
 	});
 
+	it("reopening Insights starts Top searches again at page 1 with no find text", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		for (let i = 0; i < 80; i += 1) {
+			const term = `${i < 10 ? "ab" : "zz"}${String(i).padStart(2, "0")}`;
+			await site.rt.fixtures.plugin.storage("searches", term, { term, count: 200 - i, empty: 0, found: true, lastAt: new Date().toISOString() });
+		}
+		type Page = { blocks: Array<{ type?: string; text?: string; page_action_id?: string; next_cursor?: string; rows?: Array<Record<string, string>> }> };
+		const call = async (input: Record<string, unknown>) => (await site.call("admin", { page: "/insights", ...input }, { method: "POST" })) as Page;
+		const table = (page: Page) => page.blocks.find((block) => block.page_action_id === "top_page");
+		const more = async (page: Page) => call({ type: "block_action", action_id: "top_page", value: { cursor: table(page)?.next_cursor } });
+		const label = (page: Page) => page.blocks.find((block) => block.type === "context" && /at a time/.test(block.text || ""))?.text || "";
+
+		let page = await call({ type: "page_load" });
+		page = await more(page);
+		page = await more(page);
+		expect(label(page)).toContain("Page 3.");
+		const reopened = await call({ type: "page_load" });
+		const two = await more(reopened);
+		expect(label(two)).toContain("Page 2.");
+		expect(table(two)?.rows?.[0].term).toBe("zz25");
+		const back = await call({ type: "block_action", action_id: "top_prev" });
+		expect(table(back)?.rows?.[0].term).toBe("ab00");
+
+		const found = await call({ type: "form_submit", action_id: "top_find", values: { find: "ab" } });
+		expect(table(found)?.rows).toHaveLength(10);
+		const fresh = await call({ type: "page_load" });
+		const unfiltered = await more(fresh);
+		expect(table(unfiltered)?.rows?.[0].term).toBe("zz25");
+		expect(label(unfiltered)).toContain("80 terms");
+	});
+
 	it("never serves a contact link saved before the stricter check", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
