@@ -27,7 +27,8 @@ if ! ls "$SITE"/astro.config.* >/dev/null 2>&1 || ! grep -q "emdash" "$SITE"/ast
 fi
 
 VERSION="$(node -e 'console.log(require(process.argv[1]).version)' "$PLUGIN/package.json")"
-SUMS="$KIT/lib/knowx-strings.sums"
+SUMS="$KIT/kit.sums"
+backups=()
 notes=()
 
 # Line 1 of each shared file carries "wbcom-shared: N". A copy without the number counts as 0.
@@ -47,16 +48,17 @@ copy() { # copy <kit file> <site file>
 		fi
 		(( want > have )) && notes+=("Upgraded ${to#"$SITE/"} from wbcom-shared $have to $want (another Wbcom plugin had copied the older one).")
 	fi
-	# knowx-strings.sums lists the SHA-256 of the file at every release: a file whose hash is in
-	# it was never edited, so it is replaced quietly. Only an edited file is backed up.
-	if [[ "$name" == knowx-strings.ts && -f "$to" ]] && ! cmp -s "$from" "$to"; then
-		local sum backup
+	# kit.sums lists "<sha256>  <path>" for every kit file at every release: a site file whose hash
+	# is listed for its path was never edited, so it is replaced quietly. Anything else is backed up.
+	if [[ -f "$to" && "$name" != wbcom-kit.ts && "$name" != wbcom-base.css ]] && ! cmp -s "$from" "$to"; then
+		local sum rel backup
 		sum="$(shasum -a 256 "$to" | cut -d' ' -f1)"
-		if ! grep -qx "$sum" "$SUMS"; then
+		rel="${from#"$KIT/"}"
+		if ! grep -qxF "$sum  $rel" "$SUMS"; then
 			backup="$to.bak-$(date +%Y%m%d)"
 			[[ -e "$backup" ]] && backup="$to.bak-$(date +%Y%m%d-%H%M%S)"
 			cp "$to" "$backup"
-			notes+=("You had edited ${to#"$SITE/"}. Your version is saved as ${backup#"$SITE/"}: copy your wording back from it.")
+			backups+=("${backup#"$SITE/"}")
 		fi
 	fi
 	cp "$from" "$to"
@@ -64,7 +66,7 @@ copy() { # copy <kit file> <site file>
 
 for part in lib styles components; do
 	for file in "$KIT/$part"/*; do
-		[[ -f "$file" && "$(basename "$file")" != .gitkeep && "$file" != *.sums ]] && copy "$file" "$SITE/src/$part/$(basename "$file")"
+		[[ -f "$file" && "$(basename "$file")" != .gitkeep ]] && copy "$file" "$SITE/src/$part/$(basename "$file")"
 	done
 done
 while IFS= read -r file; do
@@ -96,6 +98,10 @@ fi
 [[ "$QUIET" == 1 ]] && exit 0
 
 for note in "${notes[@]+"${notes[@]}"}"; do echo "Note: $note"; done
+if (( ${#backups[@]} )); then
+	echo "You had edited these kit files. Each one is saved next to it; copy your changes back from it:"
+	for backup in "${backups[@]}"; do echo "  $backup"; done
+fi
 cat <<DONE
 KnowX $VERSION site kit copied into $SITE
 

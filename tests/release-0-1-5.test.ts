@@ -256,15 +256,27 @@ describe("first admin screen (#43, starter #2)", () => {
 		expect(again).toContain("Set up visitor pages");
 	});
 
-	it("ships the hash of this version's wording file as the last line of knowx-strings.sums", async () => {
+	// CSS is left out: the test runner hands ?raw CSS back processed, so its bytes differ.
+	it("kit.sums lists the hash of every kit script, part and page in this version", async () => {
 		// @ts-expect-error vite raw import
-		const sums = String((await import("../site-kit/lib/knowx-strings.sums?raw")).default).trim().split("\n");
-		// @ts-expect-error vite raw import
-		const file = String((await import("../site-kit/lib/knowx-strings.ts?raw")).default);
-		const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(file)));
-		const now = [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-		expect(sums.at(-1)).toBe(now);
+		const sums = new Set(String((await import("../site-kit/kit.sums?raw")).default).trim().split("\n"));
+		const files = (import.meta as unknown as { glob: (p: string[], o: object) => unknown }).glob(["../site-kit/{lib,components,layouts}/*.{ts,astro}", "../site-kit/pages/**/*.astro"], {
+			query: "?raw",
+			import: "default",
+			eager: true,
+		}) as Record<string, string>;
+		const hex = async (text: string) =>
+			[...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+		let checked = 0;
+		for (const [file, text] of Object.entries(files)) {
+			const rel = file.replace("../site-kit/", "");
+			if (/wbcom-(kit\.ts|base\.css)$/.test(rel)) continue;
+			expect(sums.has(`${await hex(text)}  ${rel}`), `${rel} is not in kit.sums: run scripts/make-kit-sums.sh`).toBe(true);
+			checked += 1;
+		}
+		expect(checked).toBeGreaterThan(10);
 	});
+
 
 	it("names where to add the first help article and FAQ once the content types exist", async () => {
 		const site = await openSite();

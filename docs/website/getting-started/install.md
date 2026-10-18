@@ -44,14 +44,14 @@ After every plugin update, run step 2 again with the new tag.
 
 **Step 1.** EmDash lists what KnowX asks for: reading your content, your content types and your categories. It never changes your content. A **KnowX** group with **Insights** and **Settings** appears in the admin menu. Insights opens with a **Set up visitor pages** card that shows the same command for the version you installed.
 
-**Step 2.** Each run clones into a new folder, so it works the same after an update. The script copies:
+**Step 2.** Each run clones into a new folder, so it works the same after an update. Any kit file you edited (the wording file, a style, a page) is saved next to it as `<file>.bak-YYYYMMDD` before the new one is copied, and the script lists those backups; files you never touched are replaced quietly. The script copies:
 
 | Into your site | What it is |
 | --- | --- |
 | `src/pages/docs/` | Help home, each article, each topic, search results, the FAQ page |
 | `src/components/` | `Helpful.astro`, `StillNeedHelp.astro`, `DocSearch.astro` |
 | `src/lib/`, `src/styles/` | KnowX code and styles, plus the shared `wbcom-kit.ts` and `wbcom-base.css` |
-| `src/lib/knowx-strings.ts` | Every word a visitor sees. If yours differs, the old one is kept as `knowx-strings.ts.bak-YYYYMMDD` |
+| `src/lib/knowx-strings.ts` | Every word a visitor sees. Reword or translate it here |
 | `src/layouts/KnowXLayout.astro` | Hands each help page to your layout. Copied once, never replaced |
 | `.emdash/knowx-seed.json` | The two content types below |
 
