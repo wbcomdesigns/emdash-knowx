@@ -221,6 +221,8 @@ describe("first admin screen (#43, starter #2)", () => {
 		expect(page).not.toContain("/tmp/emdash-knowx");
 		expect(page).toContain("/docs/faq/");
 		expect(page).not.toContain("blob/main");
+		expect(page).toContain("Content, Help articles");
+		expect(page).toContain("Content, FAQs");
 		const done = JSON.stringify(await site.call("admin", { type: "block_action", action_id: "kit_done", page: "/insights" }, { method: "POST" }));
 		expect(done).not.toContain("Set up visitor pages");
 		expect(done).toContain("Install guide");

@@ -69,7 +69,7 @@ plus a **Help categories** taxonomy for topics. Search is turned on for both. An
 import DocSearch from "../../components/DocSearch.astro";
 ```
 
-goes in the top block, and `<DocSearch />` where the box should show. The help pages wrap themselves in your site's layout through `src/layouts/KnowXLayout.astro`. It expects `src/layouts/Base.astro` taking `title` and `description`, as the EmDash templates ship. See [Wording and design](../customize/wording-and-design.md) if yours differs.
+goes in the top block, and `<DocSearch />` on the line after `<PortableText value={post.data.content} />`, so the box sits under the post text inside the post column. Placed outside the theme's frame it runs the full width of the window. The help pages wrap themselves in your site's layout through `src/layouts/KnowXLayout.astro`. It expects `src/layouts/Base.astro` taking `title` and `description`, as the EmDash templates ship. See [Wording and design](../customize/wording-and-design.md) if yours differs.
 
 **Step 4.** In Admin, Menus, add **Help** linking to `/docs/` and **FAQ** linking to `/docs/faq/`.
 

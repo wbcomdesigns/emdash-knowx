@@ -62,6 +62,7 @@ export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string
 				{ label: "FAQ page", value: "/docs/faq/" },
 			],
 		},
+		{ type: "context", text: "Then add your first help article in Content, Help articles, and your first question in Content, FAQs." },
 		{
 			type: "actions",
 			elements: [guide, { type: "button", action_id: "kit_done", label: "Visitor pages are set up", style: "primary" }],
@@ -115,7 +116,7 @@ export async function renderInsights(
 		firstSteps.push({
 			type: "empty",
 			title: "Add your first help article",
-			description: `In the admin menu open Content, ${status.articleLabel}, and choose New. Publish it and it shows on /docs/.`,
+			description: `In the admin menu open Content, ${status.articleLabel}, and choose Add New. Publish it and it shows on /docs/.`,
 		});
 	}
 	if (!status.faqCollectionExists) {
@@ -128,7 +129,7 @@ export async function renderInsights(
 		firstSteps.push({
 			type: "empty",
 			title: "Add your first FAQ",
-			description: `In the admin menu open Content, ${status.faqLabel}, and choose New. Published questions show on /docs/faq/.`,
+			description: `In the admin menu open Content, ${status.faqLabel}, and choose Add New. Published questions show on /docs/faq/.`,
 		});
 	}
 	const reports = await insightTables(ctx);

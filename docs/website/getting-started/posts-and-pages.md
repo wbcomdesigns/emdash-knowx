@@ -50,7 +50,7 @@ In `src/pages/posts/[slug].astro` (or `src/pages/pages/[slug].astro`), add the i
 import DocSearch from "../../components/DocSearch.astro";
 ```
 
-Then place the tag where you want the box:
+Then place the tag where you want the box. Under the post text is a good place: on the line after `<PortableText value={post.data.content} />`. Outside the theme's frame it runs the full width of the window.
 
 ```astro
 <DocSearch />

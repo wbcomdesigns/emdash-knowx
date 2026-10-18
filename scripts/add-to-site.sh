@@ -109,7 +109,9 @@ Left for you:
      src/layouts/Base.astro taking title and description, point it at yours.
   2. Optional: a help search box on every post. In src/pages/posts/[slug].astro add
        import DocSearch from "../../components/DocSearch.astro";
-     to the top block, and <DocSearch /> where the box should go.
+     to the top block, and <DocSearch /> on the line after
+       <PortableText value={post.data.content} />
+     so the box sits under the post text, inside the post column.
   3. Stop the dev server and start it again.
   4. In the admin, Menus: add Help linking to /docs/ and FAQ linking to /docs/faq/.
   5. In the admin, Content, Help articles: add and publish your first article.
