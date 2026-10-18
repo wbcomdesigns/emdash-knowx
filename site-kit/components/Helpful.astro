@@ -1,7 +1,8 @@
 ---
 /**
- * Was-this-helpful vote. Markup is the same for every visitor so the page can stay cached.
- * Counts and the comment box load in the browser.
+ * Was-this-helpful vote. Counts and the comment box load in the browser. A signed-in member votes
+ * through the member route. A guest votes only when the host gives EmDash the visitor's address
+ * (Cloudflare, or trustedProxyHeaders); otherwise the guest sees a sign-in link instead.
  */
 import { jsonForScript } from "../lib/knowx";
 import { kx } from "../lib/knowx-strings";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 const { id } = Astro.props;
+const member = Boolean((Astro.locals as { user?: unknown }).user);
 const copy = jsonForScript({
 	yes: kx.helpfulYes,
 	no: kx.helpfulNo,
@@ -28,13 +30,15 @@ const copy = jsonForScript({
 	stillButton: kx.stillNeedButton,
 	question: kx.helpfulQuestion,
 });
+const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pathname)}`;
 ---
 
-<section class="wb wb-card" data-kx-helpful data-id={id} aria-labelledby="kx-helpful-h">
+<section class="wb wb-card" data-kx-helpful data-id={id} data-member={member ? "1" : undefined} aria-labelledby="kx-helpful-h">
 	<script type="application/json" data-kx-helpful-copy set:html={copy}></script>
 	<h2 id="kx-helpful-h">{kx.helpfulQuestion}</h2>
 	<p class="wb-sr" data-kx-tally hidden></p>
-	<div class="wb-summary">
+	<p class="wb-muted" data-kx-signin hidden>{kx.helpfulSignIn} <a href={signIn}>{kx.helpfulSignInLink}</a></p>
+	<div class="wb-summary" data-kx-buttons>
 		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="yes" aria-pressed="false">{kx.helpfulYes}</button>
 		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="no" aria-pressed="false">{kx.helpfulNo}</button>
 	</div>
@@ -57,16 +61,6 @@ const copy = jsonForScript({
 <script>
 	import { api } from "../lib/wbcom-kit";
 	import { phrase } from "../lib/knowx-strings";
-
-	const VID = "knowx_vid";
-
-	function visitorId(): string {
-		const found = document.cookie.match(/(?:^|; )knowx_vid=([^;]+)/);
-		if (found?.[1]) return decodeURIComponent(found[1]);
-		const id = crypto.randomUUID();
-		document.cookie = `${VID}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-		return id;
-	}
 
 	function copyOf(root: HTMLElement) {
 		try {
@@ -104,7 +98,15 @@ const copy = jsonForScript({
 		const commentForm = root.querySelector<HTMLFormElement>("[data-kx-comment]");
 		const contact = root.querySelector<HTMLElement>("[data-kx-contact]");
 		const contactLink = root.querySelector<HTMLAnchorElement>("[data-kx-contact-link]");
-		const config = await api("knowx", "config");
+		const member = root.dataset.member === "1";
+		const [config, health] = await Promise.all([api("knowx", "config"), member ? Promise.resolve({ ok: true }) : api("knowx", "health")]);
+		// No visitor address on this host: guests are asked to sign in instead of voting.
+		if (!member && health.ok && health.guestWrites === false) {
+			const buttons = root.querySelector<HTMLElement>("[data-kx-buttons]");
+			const signIn = root.querySelector<HTMLElement>("[data-kx-signin]");
+			if (buttons) buttons.hidden = true;
+			if (signIn) signIn.hidden = false;
+		}
 		const askComment = config.askComment !== false;
 		const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
 		if (contactLink && contactUrl) contactLink.href = contactUrl;
@@ -112,7 +114,7 @@ const copy = jsonForScript({
 
 		const vote = async (helpful: boolean, comment = "") => {
 			if (!status) return;
-			const result = await api("knowx", "helpful", { id, helpful, comment, vid: visitorId() });
+			const result = await api("knowx", member ? "helpful_member" : "helpful", { id, helpful, comment });
 			status.hidden = false;
 			if (!result.ok) {
 				status.dataset.tone = "error";

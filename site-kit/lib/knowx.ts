@@ -2,7 +2,6 @@ import { callPluginRoute } from "./wbcom-kit";
 import { kx, kindLabel } from "./knowx-strings";
 
 export const HELP_PATH = "/docs";
-export const VID_COOKIE = "knowx_vid";
 export const PLUGIN = "knowx";
 
 export type KnowxConfig = {
@@ -172,9 +171,5 @@ export const SEARCH_ROUTES: Record<string, string> = {
 	posts: "/posts/:slug",
 	pages: "/pages/:slug",
 };
-
-export function visitorIdFromCookie(raw: string | undefined): string {
-	return raw && raw.length < 80 ? raw : crypto.randomUUID();
-}
 
 export { kx, kindLabel };

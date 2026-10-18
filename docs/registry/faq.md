@@ -1,11 +1,11 @@
 **Why is `/docs/` a 404 after install?**
-The plugin cannot create pages. Copy the site kit pages into your site, then reload.
+The plugin cannot create pages. Run the two kit lines from the Installation tab, then restart the dev server.
 
 **Votes or search log fail after a registry install?**
 Copy the current site kit. Older kits called `/plugins/knowx/` only. A registry install uses a generated id. The current kit tries that id, then the name.
 
 **Can guests vote and search?**
-Yes. Every reader-facing feature works without an account.
+Search and reading, always. Voting, when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders`); elsewhere guests see a sign-in link and members vote.
 
 **Does search look through posts and pages?**
 Only the content types you tick on Settings. Help articles are on by default. A type with search turned off in its collection will not return results.

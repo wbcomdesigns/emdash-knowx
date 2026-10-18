@@ -8,10 +8,12 @@
 	display: grid;
 	gap: 2rem;
 	box-sizing: border-box;
-	width: 100%;
+	/* Same frame as the theme's header and footer (the blog template's .frame), so the help pages
+	   line up with the site edge. Older themes without the frame tokens get the 0.1.4 sizes. */
+	width: var(--frame-width, 100%);
 	max-width: var(--wide-width, 75rem);
 	margin-inline: auto;
-	padding-inline: var(--spacing-6, 1.5rem);
+	padding-inline: var(--frame-padding, var(--spacing-6, 1.5rem));
 	padding-block: 1.25rem 3rem;
 	border-radius: var(--wb-radius);
 	overflow-wrap: anywhere;

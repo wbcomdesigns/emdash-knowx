@@ -41,7 +41,7 @@ This plugin must work for any site owner, not one niche. Judge every screen and 
 | Docs or SaaS | The full help center and product docs |
 | Portfolio or agency | Client onboarding and process guides |
 
-**Member accounts:** No member accounts needed. Every reader-facing feature works for guests.
+**Member accounts:** No member accounts needed. Every reader-facing feature works for guests on a host that gives EmDash the visitor's address. Elsewhere guests sign in to vote (owner decision 2026-10-16).
 
 How it stays general:
 

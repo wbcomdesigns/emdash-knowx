@@ -4,9 +4,9 @@ import { articleCollection, RATE_LIMITED, rateLimited } from "./core";
 import { listTopLevelCategories, useProductLayer } from "./products";
 import { loadSettings } from "./settings";
 import { asBoolean, asNumber, asRecord, asString, nowIso } from "./util";
-import { normaliseTerm, skipSearchTerm, visitorHash } from "./visitor";
+import { normaliseTerm, requestAddress, skipSearchTerm, visitorHash } from "./visitor";
 
-type RouteCtx = { input: unknown; requestMeta?: unknown };
+type RouteCtx = { input: unknown; requestMeta?: unknown; user?: unknown };
 
 function fail(code: string) {
 	return { ok: false, error: { code } };
@@ -31,35 +31,97 @@ export async function handleProducts(ctx: PluginContext) {
 	};
 }
 
-export async function handleLogSearch(routeCtx: RouteCtx, ctx: PluginContext) {
+/** Rows the search log keeps. The oldest searched terms go first when a new term would pass it. */
+export const SEARCH_LOG_CAP = 5000;
+/** How long a search with no results stays on the "Searches with no results" list. */
+export const EMPTY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+export const GUEST_UNAVAILABLE = {
+	ok: false,
+	error: { code: "GUEST_UNAVAILABLE", message: "Sign in to continue." },
+};
+
+/** Who is writing: a member (host-verified id) or a guest counted by the address EmDash gave. */
+export type Writer = { address: string } | { member: string };
+
+/** The guest writer for this request, or null when the host gave no visitor address (#40). */
+export function guestWriter(routeCtx: RouteCtx): Writer | null {
+	const address = requestAddress(routeCtx);
+	return address ? { address } : null;
+}
+
+export function memberWriter(routeCtx: RouteCtx): Writer | null {
+	const id = asString((routeCtx.user as { id?: unknown } | undefined)?.id);
+	return id ? { member: id } : null;
+}
+
+/**
+ * Count one help search. The plugin cannot run search itself (sandboxed plugins have no search
+ * API), so it never trusts a caller who says a search found results: a report of "nothing found"
+ * is counted on its own and a later call can never clear it. Anyone could add an empty term by
+ * searching for it, so a forged report gains nothing; hiding a real empty search is no longer
+ * possible. Empty searches drop off the list after EMPTY_WINDOW_MS.
+ */
+export async function handleLogSearch(routeCtx: RouteCtx, ctx: PluginContext, writer: Writer | null) {
+	if (!writer) return GUEST_UNAVAILABLE;
 	const raw = asRecord(routeCtx.input);
 	if (asString(raw.website) || asString(raw.hp)) return { ok: true };
-	const who = await visitorHash(ctx, routeCtx, raw);
+	const who = await visitorHash(ctx, writer);
 	if (await rateLimited(ctx, `search:${who}`)) return RATE_LIMITED;
 	const term = normaliseTerm(raw.q);
 	if (skipSearchTerm(term)) return { ok: true };
-	const results = Math.max(0, asNumber(raw.found) ?? 0);
+	const empty = asNumber(raw.found) === 0;
 	const lastAt = nowIso();
 	const existing = asRecord(await ctx.storage.searches.get(term));
 	if (!existing.term) {
-		await ctx.storage.searches.put(term, { term, count: 1, found: results > 0, results, lastAt });
+		await ctx.storage.searches.put(term, {
+			term,
+			count: 1,
+			empty: empty ? 1 : 0,
+			found: !empty,
+			lastAt,
+			...(empty ? { lastEmptyAt: lastAt } : {}),
+		});
+		await trimSearchLog(ctx);
 		return { ok: true };
 	}
+	const set: Record<string, unknown> = { lastAt };
+	if (empty) Object.assign(set, { found: false, lastEmptyAt: lastAt });
 	const updated = await ctx.storage.searches.updateIf(term, {
 		where: {},
-		delta: { count: { inc: 1 } },
-		set: { found: results > 0, results, lastAt },
+		delta: { count: { inc: 1 }, ...(empty ? { empty: { inc: 1 } } : {}) },
+		set,
 	});
 	if (!updated.applied) {
 		await ctx.storage.searches.put(term, {
+			...existing,
 			term,
 			count: (asNumber(existing.count) ?? 0) + 1,
-			found: results > 0,
-			results,
-			lastAt,
+			empty: emptyCount(existing) + (empty ? 1 : 0),
+			...set,
 		});
 	}
 	return { ok: true };
+}
+
+/** Searches of a row that found nothing. A 0.1.4 row only has found: false and its count. */
+export function emptyCount(row: Record<string, unknown>): number {
+	const counted = asNumber(row.empty);
+	if (counted !== null) return counted;
+	return row.found === false ? (asNumber(row.count) ?? 0) : 0;
+}
+
+/** When the term last found nothing, or "" when it never did. */
+export function lastEmptyAt(row: Record<string, unknown>): string {
+	return asString(row.lastEmptyAt) || (row.found === false ? asString(row.lastAt) : "");
+}
+
+/** Keep the log at SEARCH_LOG_CAP rows: drop the terms searched longest ago. */
+export async function trimSearchLog(ctx: PluginContext, cap = SEARCH_LOG_CAP): Promise<void> {
+	const total = await ctx.storage.searches.count();
+	if (total <= cap) return;
+	const oldest = await ctx.storage.searches.query({ limit: Math.min(100, total - cap), orderBy: { lastAt: "asc" } });
+	await ctx.storage.searches.deleteMany(oldest.items.map((item) => item.id));
 }
 
 export async function handleTally(routeCtx: RouteCtx, ctx: PluginContext) {
@@ -72,14 +134,15 @@ export async function handleTally(routeCtx: RouteCtx, ctx: PluginContext) {
 	return { ok: true, yes, no };
 }
 
-export async function handleHelpful(routeCtx: RouteCtx, ctx: PluginContext) {
+export async function handleHelpful(routeCtx: RouteCtx, ctx: PluginContext, writer: Writer | null) {
+	if (!writer) return GUEST_UNAVAILABLE;
 	const raw = asRecord(routeCtx.input);
 	const id = asString(raw.id);
 	if (!id) return fail("VALIDATION_ERROR");
 	const collection = await articleCollection(ctx);
 	const entry = await ctx.content?.get(collection, id).catch(() => null);
 	if (!entry || entry.status !== "published") return fail("NOT_FOUND");
-	const who = await visitorHash(ctx, routeCtx, raw);
+	const who = await visitorHash(ctx, writer);
 	if (await rateLimited(ctx, `helpful:${who}`)) return RATE_LIMITED;
 	const helpful = asBoolean(raw.helpful);
 	const settings = await loadSettings(ctx);

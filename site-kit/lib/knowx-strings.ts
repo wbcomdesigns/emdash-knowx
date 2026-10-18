@@ -55,6 +55,9 @@ export const kx = {
 	helpfulCommentHint: "Optional. Up to 500 characters.",
 	helpfulCommentSend: "Send comment",
 	helpfulError: "Your vote could not be saved. Try again.",
+	/** Shown instead of Yes and No when guests cannot vote on this host. */
+	helpfulSignIn: "Sign in to say whether this helped.",
+	helpfulSignInLink: "Sign in",
 	stillNeedTitle: "Still need help?",
 	stillNeedBody: "If this did not answer your question, you can contact us.",
 	stillNeedButton: "Contact us",
@@ -79,6 +82,7 @@ const CODES: Record<string, string> = {
 	VALIDATION_ERROR: kx.helpfulError,
 	NOT_FOUND: kx.notFoundTitle,
 	RATE_LIMITED: kx.rateLimited,
+	GUEST_UNAVAILABLE: kx.helpfulSignIn,
 	OFFLINE: kx.offline,
 	FAILED: kx.fallback,
 };

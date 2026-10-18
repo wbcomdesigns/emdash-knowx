@@ -1,6 +1,7 @@
 import type { PluginContext } from "emdash/plugin";
 
-import { articleCollection, collectionStatus, entryRef } from "./core";
+import { articleCollection, collectionStatus, entryRef, FAQ, publishedCount } from "./core";
+import { EMPTY_WINDOW_MS, emptyCount, lastEmptyAt } from "./public";
 import { listTopLevelCategories, PRODUCT_ICONS, saveProductIcon, useProductLayer } from "./products";
 import {
 	listContentTypes,
@@ -15,42 +16,124 @@ import { asBoolean, asNumber, asRecord, asString } from "./util";
 type Toast = { message: string; type: "success" | "error" | "info" };
 export type BlockResponse = { blocks: Array<Record<string, unknown>>; toast?: Toast };
 
+const KIT_DONE = "kit_pages_done";
+const REPO_URL = "https://github.com/wbcomdesigns/emdash-knowx";
+
+function guideUrl(ctx: PluginContext, anchor = ""): string {
+	return `${REPO_URL}/blob/v${ctx.plugin.version}/docs/website/getting-started/install.md${anchor}`;
+}
+
+/**
+ * The "Set up visitor pages" card. A registry plugin cannot add pages, so until the site kit is
+ * copied every KnowX address is the site's 404. The card gives the command for the version that
+ * is installed (never main), until the owner says the pages are set up; then one line to the guide.
+ */
+export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string, unknown>>> {
+	const tag = `v${ctx.plugin.version}`;
+	const guide = { type: "link", label: "Install guide", target: { kind: "external", url: guideUrl(ctx) } };
+	if ((await ctx.kv.get<string>(KIT_DONE)) === "1") {
+		return [
+			{ type: "context", text: `Visitor pages come from the KnowX site kit. After each plugin update, copy the kit for ${tag} again.` },
+			{ type: "actions", elements: [guide] },
+		];
+	}
+	return [
+		{
+			type: "banner",
+			title: "Set up visitor pages",
+			description:
+				"Installing KnowX adds this admin, not pages on your site. The help pages come from the KnowX site kit. Until you copy it, the addresses below show your site's 404 page.",
+			variant: "default",
+		},
+		{ type: "context", text: `From your site's root folder, run these two lines. They copy the kit for the version you have installed (${tag}) and create the Help articles and FAQs content types.` },
+		{
+			type: "code",
+			language: "bash",
+			code: `git clone --branch ${tag} --depth 1 ${REPO_URL} /tmp/emdash-knowx\n/tmp/emdash-knowx/scripts/add-to-site.sh .`,
+		},
+		{ type: "context", text: "Updating from an earlier version? Remove /tmp/emdash-knowx first, so the clone gets the new version." },
+		{
+			type: "fields",
+			fields: [
+				{ label: "Help home", value: "/docs/" },
+				{ label: "One article", value: "/docs/<article>/" },
+				{ label: "Topic", value: "/docs/category/<topic>/" },
+				{ label: "Search results", value: "/docs/search" },
+				{ label: "FAQ page", value: "/docs/faq/" },
+			],
+		},
+		{
+			type: "actions",
+			elements: [guide, { type: "button", action_id: "kit_done", label: "Visitor pages are set up", style: "primary" }],
+		},
+	];
+}
+
+/** One plain line when this host gives EmDash no visitor address, so guests cannot vote. */
+function guestBlocks(ctx: PluginContext, guestWrites: boolean): Array<Record<string, unknown>> {
+	if (guestWrites) return [];
+	return [
+		{
+			type: "banner",
+			title: "Guests cannot vote on this host",
+			description:
+				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. Guests see a sign-in link instead of Was this helpful, and their searches are not counted. Signed-in members vote and search as usual. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders in astro.config.mjs.",
+			variant: "default",
+		},
+		{
+			type: "actions",
+			elements: [{ type: "link", label: "Guests and visitor addresses", target: { kind: "external", url: guideUrl(ctx, "#guests-and-visitor-addresses") } }],
+		},
+	];
+}
+
 export async function renderInsights(
 	ctx: PluginContext,
 	extra?: Pick<BlockResponse, "toast">,
+	guestWrites = true,
 ): Promise<BlockResponse> {
 	const status = await collectionStatus(ctx);
+	const top = [{ type: "header", text: "Insights" }, ...(await kitBlocks(ctx)), ...guestBlocks(ctx, guestWrites)];
 	if (!status.collectionExists) {
 		return {
 			blocks: [
-				{ type: "header", text: "Insights" },
+				...top,
 				{
 					type: "empty",
 					title: "Help articles are not set up",
-					description: "Add the help collection from the site kit seed, then come back here.",
+					description:
+						"The kit command above creates the Help articles and FAQs content types. Then add your first article in Content, Help articles.",
 				},
 			],
 			toast: extra?.toast,
 		};
 	}
 
+	const faqCount = status.faqCollectionExists ? await publishedCount(ctx, FAQ) : 0;
+	const firstSteps: Array<Record<string, unknown>> = [];
+	if (status.articleCount === 0) {
+		firstSteps.push({
+			type: "empty",
+			title: "Add your first help article",
+			description: `In the admin menu open Content, ${status.articleLabel}, and choose New. Publish it and it shows on /docs/.`,
+		});
+	}
+	if (!status.faqCollectionExists) {
+		firstSteps.push({
+			type: "empty",
+			title: "The FAQ collection is not set up yet",
+			description: "Run the kit command above again: it creates the FAQs content type and leaves your articles alone.",
+		});
+	} else if (faqCount === 0) {
+		firstSteps.push({
+			type: "empty",
+			title: "Add your first FAQ",
+			description: `In the admin menu open Content, ${status.faqLabel}, and choose New. Published questions show on /docs/faq/.`,
+		});
+	}
 	const reports = await insightTables(ctx);
-	const setup = status.faqCollectionExists
-		? []
-		: [
-				{
-					type: "empty",
-					title: "The FAQ collection is not set up yet",
-					description: "Add the FAQ collection from the site kit seed when you want a FAQ page.",
-				},
-			];
 	return {
-		blocks: [
-			{ type: "header", text: "Insights" },
-			...setup,
-			await insightStats(ctx, status.articleCount),
-			...reports,
-		],
+		blocks: [...top, ...firstSteps, await insightStats(ctx, status.articleCount), ...reports],
 		toast: extra?.toast,
 	};
 }
@@ -76,10 +159,8 @@ async function insightStats(ctx: PluginContext, articleCount: number): Promise<R
 				const row = asRecord(item.data);
 				const last = asString(row.lastAt);
 				const count = asNumber(row.count) ?? 0;
-				if (last && last >= weekStart) {
-					searchesThisWeek += count;
-					if (row.found === false) emptyThisWeek += count;
-				}
+				if (last && last >= weekStart) searchesThisWeek += count;
+				if (lastEmptyAt(row) >= weekStart) emptyThisWeek += emptyCount(row);
 				if (!last) continue;
 				const day = new Date(last);
 				day.setHours(0, 0, 0, 0);
@@ -204,12 +285,16 @@ async function insightTables(ctx: PluginContext): Promise<Array<Record<string, u
 			const row = asRecord(item.data);
 			return { term: asString(row.term) || item.id, times: String(row.count ?? 0) };
 		});
-		const empty = searches.items
-			.filter((item) => asRecord(item.data).found === false)
-			.map((item) => {
-				const row = asRecord(item.data);
-				return { term: asString(row.term) || item.id, times: String(row.count ?? 0) };
-			});
+		// Empty searches from the last 30 days, most searched first. Read from the latest 200 terms,
+		// not the top 50, so a rare empty search still shows.
+		const since = new Date(Date.now() - EMPTY_WINDOW_MS).toISOString();
+		const recent = await ctx.storage.searches.query({ limit: 200, orderBy: { lastAt: "desc" } });
+		const empty = recent.items
+			.map((item) => ({ id: item.id, row: asRecord(item.data) }))
+			.filter(({ row }) => emptyCount(row) > 0 && lastEmptyAt(row) >= since)
+			.sort((a, b) => emptyCount(b.row) - emptyCount(a.row))
+			.slice(0, 50)
+			.map(({ id, row }) => ({ term: asString(row.term) || id, times: String(emptyCount(row)) }));
 		blocks.push({ type: "header", text: "Top searches" });
 		blocks.push(
 			top.length
@@ -413,13 +498,11 @@ export async function renderDashboard(ctx: PluginContext): Promise<BlockResponse
 	const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 	let emptyThisWeek = 0;
 	try {
-		const searches = await ctx.storage.searches.query({ limit: 200, orderBy: { count: "desc" } });
+		const searches = await ctx.storage.searches.query({ limit: 200, orderBy: { lastAt: "desc" } });
 		for (const item of searches.items) {
 			try {
 				const row = asRecord(item.data);
-				if (row.found !== false) continue;
-				const last = asString(row.lastAt);
-				if (last && last >= weekStart) emptyThisWeek += 1;
+				if (emptyCount(row) > 0 && lastEmptyAt(row) >= weekStart) emptyThisWeek += 1;
 			} catch {
 				/* one bad row must not hide the card */
 			}
@@ -477,11 +560,15 @@ export async function renderDashboard(ctx: PluginContext): Promise<BlockResponse
 	};
 }
 
-export async function handleAdmin(input: unknown, ctx: PluginContext): Promise<BlockResponse> {
+export async function handleAdmin(input: unknown, ctx: PluginContext, guestWrites = true): Promise<BlockResponse> {
 	const raw = asRecord(input);
 	const page = asString(raw.page);
 	if (asString(raw.widget) === "insights" || page.includes("widget:insights")) return renderDashboard(ctx);
 	if (asString(raw.type) === "form_submit") return saveSettings(raw, ctx);
+	if (asString(raw.type) === "block_action" && asString(raw.action_id) === "kit_done") {
+		await ctx.kv.set(KIT_DONE, "1");
+		return renderInsights(ctx, { toast: { message: "Noted. The setup card is now one line with the guide.", type: "success" } }, guestWrites);
+	}
 	if (page.includes("settings")) return renderSettings(ctx);
-	return renderInsights(ctx);
+	return renderInsights(ctx, undefined, guestWrites);
 }

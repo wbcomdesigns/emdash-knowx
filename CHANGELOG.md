@@ -2,6 +2,20 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.1.5] - 2026-10-19
+
+Copy the site kit again after you update: run the two lines from the install guide with the new tag.
+
+- Security - Guests can vote and have searches counted only when the host gives EmDash the visitor's address (Cloudflare, or trustedProxyHeaders); elsewhere guests see a sign-in link and signed-in members vote through two new member routes.
+- Security - The search log keeps at most 5000 terms, and a forged "results found" can no longer hide a search that found nothing.
+- Security - Phone numbers typed with dashes or brackets are never stored in the search log, and a contact link with a backslash is refused.
+- New      - One command copies the site kit and creates the Help articles and FAQs content types: scripts/add-to-site.sh.
+- New      - Insights opens with a Set up visitor pages card that gives the kit command for the installed version, until you mark the pages as set up.
+- Improve  - Insights says where to add the first help article and FAQ, by name, and says plainly when guests cannot vote on this host.
+- Improve  - Install guides start with what the site needs first (sandbox runner, Node 22.16, the kit at the release tag) and were checked on EmDash 1.3.0.
+- Fix      - Help pages line up with the theme's header and footer instead of sitting 8px inside them.
+- Fix      - Kit buttons keep 4.5:1 contrast in dark mode on the blog template (shared kit styles version 4).
+
 ## [0.1.4] - 2026-10-15
 
 Copy `site-kit/` again after you update.

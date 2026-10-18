@@ -1,36 +1,30 @@
+## 0.1.5
+
+- Security: guests vote and are counted only when the host gives EmDash the visitor's address; elsewhere they sign in. Search log capped at 5000 terms.
+- New: one command copies the kit and creates the content types. Insights shows a Set up visitor pages card.
+- Fix: help pages line up with the theme frame; dark mode buttons pass 4.5:1.
+
 ## 0.1.4
 
-- Security: server-side calls run inside EmDash with no web request. Copy the kit again after updating.
+- Security: server-side calls run inside EmDash with no web request.
 
 ## 0.1.3
 
 - Improve: one command creates the help collections. Guides for use cases and blog posts and pages.
-- Fix: Related no longer repeats Previous and Next; page results in help search open the right address; readable with the site's light mode on a dark device.
+- Fix: Related no longer repeats Previous and Next; page results open the right address; readable in light mode on a dark device.
 
 ## 0.1.2
 
-- Improve: the chosen vote stays highlighted; a sent comment is confirmed. Even spacing under "Still need help?".
+- Improve: the chosen vote stays highlighted; a sent comment is confirmed.
 - Fix: the install guide never replaces another plugin's newer shared kit files.
-- New: full user guides.
 
 ## 0.1.1
 
-- Improve: help home shows topics and articles. Cards, FAQ and search results fill the page.
-- Improve: one search box on the results page. The first FAQ answer is open.
-- Improve: article table of contents, previous/next and related articles are cards.
-- Fix: the kit finds the plugin after a registry install. Breadcrumbs read Help / Topic. Search hits show article text, not a repeated title. Help pages sit in the theme column. Settings uses tabs. Banner and screenshots match the registry sizes.
-
-Copy `site-kit/` after updating.
+- Improve: help home shows topics and articles; one search box on the results page; article extras are cards.
+- Fix: the kit finds the plugin after a registry install. Help pages sit in the theme column. Settings uses tabs.
 
 ## 0.1.0
 
-- New: Help center pages: home, topic, article, search and FAQ.
-- New: Was this helpful votes, with an optional comment after a No.
-- New: Search log and Insights: weak articles, comments, top searches, empty searches.
-- New: Settings for the contact link, comments after a No, what search covers, and product icons.
-- New: A card on the EmDash dashboard for empty searches this week and the least helpful article.
-- New: Article and breadcrumb data for search engines.
+- New: help center pages, Was this helpful votes, search log, Insights, Settings and a dashboard card.
 
-Copy `site-kit/` after installing.
-
-Full history: https://github.com/wbcomdesigns/emdash-knowx/blob/main/CHANGELOG.md
+Copy the site kit again after every update. Full history: https://github.com/wbcomdesigns/emdash-knowx/blob/main/CHANGELOG.md

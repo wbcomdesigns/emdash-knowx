@@ -20,7 +20,7 @@ plus a chart of searches over recent days.
 | List | What it tells you | What to do |
 | --- | --- | --- |
 | Top searches | The words people search most | Make sure each has a good article |
-| Searches with no results | What people wanted and did not find | Write an article, or add the word to an existing one |
+| Searches with no results | What people wanted and did not find in the last 30 days, with how many times | Write an article, or add the word to an existing one. A term leaves the list 30 days after its last empty search |
 | Least helpful articles | Articles with more No than Yes votes, by name | Rewrite them |
 | Recent comments | What readers wrote after a No | Read for the missing detail |
 

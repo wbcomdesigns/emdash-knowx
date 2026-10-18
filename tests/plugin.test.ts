@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { categoryTerms, docsCollection, faqCollection } from "../site-kit/seed/collection.mjs";
 // @ts-expect-error plain module shared with the lab seed
 import { docs, faqs } from "../site-kit/seed/articles.mjs";
-import { openSite, withCategories, withDocs, withPosts } from "./site";
+import { guest, openSite, withCategories, withDocs, withPosts } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
 afterEach(async () => {
@@ -307,10 +307,10 @@ describe("search log", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
-		expect(await site.call("log_search", { q: "billing plan", found: 2, vid: "v1" })).toMatchObject({ ok: true });
-		expect(await site.call("log_search", { q: "billing plan", found: 0, vid: "v1" })).toMatchObject({ ok: true });
-		expect(await site.call("log_search", { q: "help@example.com", found: 0, vid: "v1" })).toMatchObject({ ok: true });
-		expect(await site.call("log_search", { q: "secret-spam", found: 0, website: "http://x", vid: "v1" })).toMatchObject({
+		expect(await site.call("log_search", { q: "billing plan", found: 2 }, guest("198.51.100.1"))).toMatchObject({ ok: true });
+		expect(await site.call("log_search", { q: "billing plan", found: 0 }, guest("198.51.100.1"))).toMatchObject({ ok: true });
+		expect(await site.call("log_search", { q: "help@example.com", found: 0 }, guest("198.51.100.1"))).toMatchObject({ ok: true });
+		expect(await site.call("log_search", { q: "secret-spam", found: 0, website: "http://x" }, guest("198.51.100.1"))).toMatchObject({
 			ok: true,
 		});
 		const page = JSON.stringify(await site.rt.admin.loadPage("/insights"));
@@ -326,16 +326,16 @@ describe("helpful", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
-		const missing = await site.call("helpful", { helpful: true, vid: "v1" });
+		const missing = await site.call("helpful", { helpful: true }, guest("198.51.100.1"));
 		expect(missing).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
-		const gone = await site.call("helpful", { id: "missing", helpful: true, vid: "v1" });
+		const gone = await site.call("helpful", { id: "missing", helpful: true }, guest("198.51.100.1"));
 		expect(gone).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
 
-		const yes = await site.call("helpful", { id: ids[0], helpful: true, vid: "v1" });
+		const yes = await site.call("helpful", { id: ids[0], helpful: true }, guest("198.51.100.1"));
 		expect(yes).toMatchObject({ ok: true, yes: 1, no: 0 });
-		const flipped = await site.call("helpful", { id: ids[0], helpful: false, comment: "Missing steps", vid: "v1" });
+		const flipped = await site.call("helpful", { id: ids[0], helpful: false, comment: "Missing steps" }, guest("198.51.100.1"));
 		expect(flipped).toMatchObject({ ok: true, yes: 0, no: 1 });
-		const other = await site.call("helpful", { id: ids[0], helpful: false, comment: "Still unclear", vid: "v2" });
+		const other = await site.call("helpful", { id: ids[0], helpful: false, comment: "Still unclear" }, guest("198.51.100.2"));
 		expect(other).toMatchObject({ ok: true, yes: 0, no: 2 });
 		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ ok: true, yes: 0, no: 2 });
 
@@ -370,8 +370,8 @@ describe("dashboard card", () => {
 		expect(texts(empty)).toMatch(/No empty searches this week/);
 		expect(texts(empty)).toMatch(/No article has more No votes than Yes yet/);
 
-		await site.call("helpful", { id: ids[0], helpful: false, comment: "Need steps", vid: "v1" });
-		await site.call("log_search", { q: "refund policy", found: 0, vid: "v1" });
+		await site.call("helpful", { id: ids[0], helpful: false, comment: "Need steps" }, guest("198.51.100.1"));
+		await site.call("log_search", { q: "refund policy", found: 0 }, guest("198.51.100.1"));
 		const card = (await site.call("admin", { widget: "insights" })) as { blocks: unknown[] };
 		expect(texts(card)).toMatch(/1 search found nothing this week/);
 		expect(texts(card)).toMatch(/Least helpful article: Welcome/);

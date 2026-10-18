@@ -21,7 +21,8 @@ export type CollectionChoice = {
 export function parseContactUrl(raw: unknown): { ok: true; value: string } | { ok: false } {
 	const value = asString(raw);
 	if (!value) return { ok: true, value: "" };
-	if (/^(javascript|data|vbscript):/i.test(value) || value.startsWith("//")) return { ok: false };
+	// "/\evil.example" and "//evil.example" both leave the site in a browser. No address needs a backslash.
+	if (/^(javascript|data|vbscript):/i.test(value) || value.startsWith("//") || value.includes("\\")) return { ok: false };
 	if (/^mailto:[^\s@]+@[^\s@]+$/i.test(value)) return { ok: true, value };
 	if (/^https?:\/\//i.test(value)) {
 		try {
