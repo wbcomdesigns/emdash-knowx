@@ -1,6 +1,6 @@
 ## 0.1.5
 
-- Security: guests vote and are counted only when the host gives EmDash the visitor's address; elsewhere they sign in. Search log capped at 5000 terms.
+- Security: guests vote and searches are counted only when the host gives EmDash the visitor's address; elsewhere guests sign in to vote. Search log capped at 5000 terms.
 - New: one command copies the kit and creates the content types. Insights shows a Set up visitor pages card.
 - Fix: help pages line up with the theme frame; dark mode buttons pass 4.5:1.
 

@@ -19,11 +19,10 @@ Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
 2. From your site's root folder:
 
    ```bash
-   git clone --branch v0.1.5 --depth 1 https://github.com/wbcomdesigns/emdash-knowx /tmp/emdash-knowx
-   /tmp/emdash-knowx/scripts/add-to-site.sh .
+   kit="$(mktemp -d)" && git clone --branch v0.1.5 --depth 1 https://github.com/wbcomdesigns/emdash-knowx "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .
    ```
 
-   It copies the kit and creates the Help articles and FAQs content types (or prints the seed command).
+   It copies the kit and creates the content types.
 3. Restart the dev server.
 4. In Admin, Menus, add `/docs/` and `/docs/faq/`.
 5. Open KnowX, Insights and follow its first screen. Add articles in Content, Help articles.

@@ -13,7 +13,7 @@ json "$API/health" | grep -q '"ok":true' || fail "health"
 ok "health"
 
 # Member and admin routes must refuse guests. List every such route here.
-for route in ${GUEST_REFUSED_ROUTES:-helpful_member log_search_member admin}; do
+for route in ${GUEST_REFUSED_ROUTES:-helpful_member admin}; do
 	[[ "$(status -X POST -H 'Content-Type: application/json' -d '{}' "$API/$route")" == "401" ]] || fail "guest refused on $route"
 done
 ok "guests refused on member and admin routes"

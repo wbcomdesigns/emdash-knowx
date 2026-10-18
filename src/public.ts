@@ -116,12 +116,24 @@ export function lastEmptyAt(row: Record<string, unknown>): string {
 	return asString(row.lastEmptyAt) || (row.found === false ? asString(row.lastAt) : "");
 }
 
-/** Keep the log at SEARCH_LOG_CAP rows: drop the terms searched longest ago. */
+/**
+ * Keep the log at SEARCH_LOG_CAP rows. The least searched terms go first, the oldest of them
+ * first, so a flood of made-up one-off terms only pushes out other one-off terms and never a term
+ * with real traffic. ponytail: once the log is full of repeated terms, a brand-new term is dropped
+ * on arrival until something else ages out; raise the cap if that ever matters.
+ */
 export async function trimSearchLog(ctx: PluginContext, cap = SEARCH_LOG_CAP): Promise<void> {
 	const total = await ctx.storage.searches.count();
 	if (total <= cap) return;
-	const oldest = await ctx.storage.searches.query({ limit: Math.min(100, total - cap), orderBy: { lastAt: "asc" } });
-	await ctx.storage.searches.deleteMany(oldest.items.map((item) => item.id));
+	const excess = Math.min(100, total - cap);
+	// Read a wider slice of the least searched rows, then order by count and age here.
+	const low = await ctx.storage.searches.query({ limit: Math.min(500, excess + 200), orderBy: { count: "asc" } });
+	const victims = low.items
+		.map((item) => ({ id: item.id, row: asRecord(item.data) }))
+		.sort((a, b) => (asNumber(a.row.count) ?? 0) - (asNumber(b.row.count) ?? 0) || asString(a.row.lastAt).localeCompare(asString(b.row.lastAt)))
+		.slice(0, excess)
+		.map((item) => item.id);
+	await ctx.storage.searches.deleteMany(victims);
 }
 
 export async function handleTally(routeCtx: RouteCtx, ctx: PluginContext) {

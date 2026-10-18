@@ -76,16 +76,13 @@ describe("guests need a visitor address (#40)", () => {
 		expect(second).toMatchObject({ ok: true, yes: 0, no: 1 });
 	});
 
-	it("a signed-in member votes and searches with no address; the member routes refuse guests", async () => {
+	it("a signed-in member votes with no address; the member route refuses guests", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
 		expect(await site.call("helpful_member", { id: ids[0], helpful: true }, asMember())).toMatchObject({ ok: true, yes: 1 });
-		expect(await site.call("log_search_member", { q: "member term", found: 0 }, asMember())).toMatchObject({ ok: true });
-		expect(await insightsJson(site)).toContain("member term");
 		// EmDash answers 401 before the handler on a real site; the handler refuses too.
 		expect(await site.call("helpful_member", { id: ids[0], helpful: true }, noAddress)).toMatchObject({ error: { code: "SIGN_IN_REQUIRED" } });
-		expect(await site.call("log_search_member", { q: "x", found: 0 }, noAddress)).toMatchObject({ error: { code: "SIGN_IN_REQUIRED" } });
 	});
 
 	it("Insights says plainly when guest writes are off on this host", async () => {
@@ -191,8 +188,9 @@ describe("first admin screen (#43, starter #2)", () => {
 		dispose = site.dispose;
 		const page = await insightsJson(site);
 		expect(page).toContain("Set up visitor pages");
-		expect(page).toMatch(/git clone --branch v\d+\.\d+\.\d+ --depth 1 https:\/\/github.com\/wbcomdesigns\/emdash-knowx \/tmp\/emdash-knowx/);
-		expect(page).toContain("/tmp/emdash-knowx/scripts/add-to-site.sh .");
+		const code = (JSON.parse(page).blocks as Array<{ type: string; code?: string }>).find((block) => block.type === "code")?.code;
+		expect(code).toMatch(/^kit="\$\(mktemp -d\)" && git clone --branch v\d+\.\d+\.\d+ --depth 1 https:\/\/github.com\/wbcomdesigns\/emdash-knowx "\$kit\/emdash-knowx" && "\$kit\/emdash-knowx\/scripts\/add-to-site.sh" \.$/);
+		expect(page).not.toContain("/tmp/emdash-knowx");
 		expect(page).toContain("/docs/faq/");
 		expect(page).not.toContain("blob/main");
 		const done = JSON.stringify(await site.call("admin", { type: "block_action", action_id: "kit_done", page: "/insights" }, { method: "POST" }));

@@ -45,13 +45,13 @@ export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string
 				"Installing KnowX adds this admin, not pages on your site. The help pages come from the KnowX site kit. Until you copy it, the addresses below show your site's 404 page.",
 			variant: "default",
 		},
-		{ type: "context", text: `From your site's root folder, run these two lines. They copy the kit for the version you have installed (${tag}) and create the Help articles and FAQs content types.` },
+		{ type: "context", text: `From your site's root folder, run this command. It copies the kit for the version you have installed (${tag}) and creates the Help articles and FAQs content types. Run it again after each update.` },
 		{
 			type: "code",
 			language: "bash",
-			code: `git clone --branch ${tag} --depth 1 ${REPO_URL} /tmp/emdash-knowx\n/tmp/emdash-knowx/scripts/add-to-site.sh .`,
+			// A fresh private folder per run (never a fixed /tmp path), and the script runs only when the clone worked.
+			code: `kit="$(mktemp -d)" && git clone --branch ${tag} --depth 1 ${REPO_URL} "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .`,
 		},
-		{ type: "context", text: "Updating from an earlier version? Remove /tmp/emdash-knowx first, so the clone gets the new version." },
 		{
 			type: "fields",
 			fields: [
@@ -77,7 +77,7 @@ function guestBlocks(ctx: PluginContext, guestWrites: boolean): Array<Record<str
 			type: "banner",
 			title: "Guests cannot vote on this host",
 			description:
-				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. Guests see a sign-in link instead of Was this helpful, and their searches are not counted. Signed-in members vote and search as usual. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders in astro.config.mjs.",
+				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. A guest who votes on Was this helpful is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders in astro.config.mjs.",
 			variant: "default",
 		},
 		{

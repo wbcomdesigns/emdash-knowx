@@ -6,7 +6,7 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 
 Copy the site kit again after you update: run the two lines from the install guide with the new tag.
 
-- Security - Guests can vote and have searches counted only when the host gives EmDash the visitor's address (Cloudflare, or trustedProxyHeaders); elsewhere guests see a sign-in link and signed-in members vote through two new member routes.
+- Security - Guests can vote and searches are counted only when the host gives EmDash the visitor's address (Cloudflare, or trustedProxyHeaders); elsewhere a guest who votes is asked to sign in, and signed-in members vote through a new member route.
 - Security - The search log keeps at most 5000 terms, and a forged "results found" can no longer hide a search that found nothing.
 - Security - Phone numbers typed with dashes or brackets are never stored in the search log, and a contact link with a backslash is refused.
 - New      - One command copies the site kit and creates the Help articles and FAQs content types: scripts/add-to-site.sh.

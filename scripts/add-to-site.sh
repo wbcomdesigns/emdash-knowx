@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adds the KnowX help pages to an EmDash site:
-#   /tmp/emdash-knowx/scripts/add-to-site.sh /path/to/your/site
+#   kit="$(mktemp -d)" && git clone --branch v<version> --depth 1 https://github.com/wbcomdesigns/emdash-knowx "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .
 # Safe to run again after a plugin update. It replaces KnowX's own files, never replaces a newer
 # shared file another Wbcom plugin copied, never touches src/layouts/KnowXLayout.astro once it
 # exists, and keeps a dated backup of a wording file you changed.
@@ -114,6 +114,9 @@ Left for you:
   4. In the admin, Menus: add Help linking to /docs/ and FAQ linking to /docs/faq/.
   5. In the admin, Content, Help articles: add and publish your first article.
      Content, FAQs: add your first question. Then open /docs/ and /docs/faq/.
+
+After each plugin update, run this from the site root with the new version's tag:
+  kit="\$(mktemp -d)" && git clone --branch v<new version> --depth 1 https://github.com/wbcomdesigns/emdash-knowx "\$kit/emdash-knowx" && "\$kit/emdash-knowx/scripts/add-to-site.sh" .
 
 Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v$VERSION/docs/website/getting-started/install.md
 DONE

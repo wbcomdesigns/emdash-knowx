@@ -33,7 +33,7 @@ const plugin: SandboxedPlugin = {
 					articleCount: status.articleCount,
 					faqCollectionExists: status.faqCollectionExists,
 					// False when the host gives EmDash no visitor address: guests cannot vote here,
-					// and their searches are not counted. Members always can.
+					// and searches are not counted. Signed-in members can still vote.
 					guestWrites: requestAddress(routeCtx) !== null,
 				};
 			},
@@ -46,14 +46,6 @@ const plugin: SandboxedPlugin = {
 			public: true,
 			methods: ["POST"],
 			handler: async (routeCtx, ctx) => handleLogSearch(routeCtx, ctx, guestWriter(routeCtx)),
-		},
-		log_search_member: {
-			permission: MEMBER,
-			methods: ["POST"],
-			handler: async (routeCtx, ctx) => {
-				const writer = memberWriter(routeCtx);
-				return writer ? handleLogSearch(routeCtx, ctx, writer) : SIGN_IN;
-			},
 		},
 		helpful: {
 			public: true,

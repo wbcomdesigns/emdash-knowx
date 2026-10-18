@@ -23,9 +23,10 @@ Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
 2. From your site's root folder, get the kit for the version you just installed and copy it in:
 
    ```bash
-   git clone --branch v0.1.5 --depth 1 https://github.com/wbcomdesigns/emdash-knowx /tmp/emdash-knowx
-   /tmp/emdash-knowx/scripts/add-to-site.sh .
+   kit="$(mktemp -d)" && git clone --branch v0.1.5 --depth 1 https://github.com/wbcomdesigns/emdash-knowx "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .
    ```
+
+   (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
    The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of any wording file you changed, creates the content types the plugin needs (if any), and prints the exact lines to paste into your templates, with the file names.
 3. Paste the lines it printed. Restart the dev server.
@@ -36,9 +37,9 @@ After every plugin update, run step 2 again with the new tag.
 
 ## What each step does for KnowX
 
-**Step 1.** EmDash lists what KnowX asks for: reading your content, your content types and your categories. It never changes your content. A **KnowX** group with **Insights** and **Settings** appears in the admin menu. Insights opens with a **Set up visitor pages** card that shows the same two lines for the version you installed.
+**Step 1.** EmDash lists what KnowX asks for: reading your content, your content types and your categories. It never changes your content. A **KnowX** group with **Insights** and **Settings** appears in the admin menu. Insights opens with a **Set up visitor pages** card that shows the same command for the version you installed.
 
-**Step 2.** If `/tmp/emdash-knowx` is already there from an earlier version, remove it first (`rm -rf /tmp/emdash-knowx`), or the clone stops. The script copies:
+**Step 2.** Each run clones into a new folder, so it works the same after an update. The script copies:
 
 | Into your site | What it is |
 | --- | --- |
@@ -78,7 +79,7 @@ goes in the top block, and `<DocSearch />` where the box should show. The help p
 
 Open `/docs/` on your site. You see the search box and your topics. If you see a 404, the kit pages were not copied; see [Troubleshooting](../troubleshooting/troubleshooting.md).
 
-A guest sees no 401 from KnowX in the browser console: every call a guest's browser makes goes to a public route, and the member routes are called only for a signed-in visitor. On a plugin installed from local files (not the registry), the first call of each visit shows one expected 404 while the kit finds the plugin's address.
+A guest sees no 401 from KnowX in the browser console, with one exception: on a host that gives no visitor address, a guest's vote goes to the member route, answers 401, and the page shows the sign-in link. That 401 is expected. On a plugin installed from local files (not the registry), the first call of each visit shows one expected 404 while the kit finds the plugin's address.
 
 ## Guests and visitor addresses
 
@@ -91,7 +92,7 @@ emdash({
 }),
 ```
 
-Only add that line when your site runs behind a proxy that sets the header. On a host that gives no address, guests see a sign-in link instead of **Was this helpful**, and their searches are not counted on Insights. Signed-in members vote and are counted as usual. Insights says so in one line while it is the case.
+Only add that line when your site runs behind a proxy that sets the header. On a host that gives no address, a guest who votes on **Was this helpful** is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. Insights says so in one line while it is the case.
 
 ## After you update the plugin
 
