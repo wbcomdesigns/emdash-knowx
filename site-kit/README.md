@@ -54,7 +54,7 @@ To reword or translate what visitors see, edit `src/lib/knowx-strings.ts` only. 
 
 - **Search.** Help search uses EmDash search. Turn search on for every collection you tick on Settings.
 - **Slugs.** A page with the slug `docs` would be hidden by the kit pages. Rename it first.
-- **Guests.** Guests vote and their searches are counted only when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` in `astro.config.mjs`). Elsewhere guests are asked to sign in, and members vote as usual. Set `trustedProxyHeaders` only to a header your proxy overwrites (behind nginx: `proxy_set_header X-Real-IP $remote_addr;` and `trustedProxyHeaders: ["x-real-ip"]`); see the install guide, Guests and visitor addresses.
+- **Guests.** Guests vote and their searches are counted only when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` inside `emdash({ ... })` in `astro.config.mjs`, for example `trustedProxyHeaders: ["x-real-ip"],`). Elsewhere guests are asked to sign in, and members vote as usual. Set `trustedProxyHeaders` only to a header your proxy overwrites (behind nginx: `proxy_set_header X-Real-IP $remote_addr;` and `trustedProxyHeaders: ["x-real-ip"]`); see the install guide, Guests and visitor addresses.
 - **Contact.** Set a contact page, http(s) link, or mailto address on Admin, KnowX, Settings. Leave it empty to hide "Still need help?".
 - **Permissions.** The plugin only reads content, schema and taxonomies. It never writes site content.
 - **Try it on a preview first.** Deploy a preview version, walk `docs/qa/QA_CHECKLIST.md` there, then go live.
@@ -72,7 +72,7 @@ Guests can search, read articles, vote helpful (on a host that gives a visitor a
 - `/docs/category/{slug}/` articles in that topic
 - Admin, KnowX: Insights and Settings, plus a card on the EmDash dashboard
 
-Expected in the browser console: the first time a guest votes on Was this helpful in a visit, one `401` from the member vote route. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest.
+Expected in the browser console: each time a guest votes on Was this helpful, one `401` from the member vote route. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest.
 
 ## Working on this plugin
 

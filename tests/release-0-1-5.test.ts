@@ -201,6 +201,52 @@ describe("search log (#41)", () => {
 		expect(card).toContain("2 searches found nothing this week");
 	}, 300_000);
 
+	it("counts every search of 40 parallel visitors in the week total", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		const results = await Promise.all(
+			Array.from({ length: 40 }, (_, i) => site.call("log_search", { q: `burst ${i}`, found: i % 2 }, guest(`198.51.100.${i + 1}`))),
+		);
+		expect(results.every((result) => (result as { ok?: boolean }).ok)).toBe(true);
+		const page = JSON.stringify(await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" }));
+		expect(page).toContain('"label":"Searches this week","value":"40"');
+		expect(page).toContain('"label":"Searches with no results","value":"20"');
+	}, 120_000);
+
+	it("Top searches pages forward, back and to the first page", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		for (let i = 0; i < 60; i += 1) {
+			await site.rt.fixtures.plugin.storage("searches", `t${String(i).padStart(2, "0")}`, { term: `t${String(i).padStart(2, "0")}`, count: 100 - i, empty: 0, found: true, lastAt: new Date().toISOString() });
+		}
+		type Page = { blocks: Array<{ page_action_id?: string; next_cursor?: string; rows?: Array<Record<string, string>>; elements?: Array<{ action_id?: string }> }> };
+		const first = (await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" })) as Page;
+		const table = (page: Page) => page.blocks.find((block) => block.page_action_id === "top_page");
+		const firstRows = table(first)?.rows?.map((row) => row.term);
+		expect(firstRows?.[0]).toBe("t00");
+		const two = (await site.call("admin", { type: "block_action", action_id: "top_page", page: "/insights", value: { cursor: table(first)?.next_cursor } }, { method: "POST" })) as Page;
+		expect(table(two)?.rows?.[0].term).toBe("t25");
+		expect(JSON.stringify(two)).toContain('"action_id":"top_prev"');
+		const three = (await site.call("admin", { type: "block_action", action_id: "top_page", page: "/insights", value: { cursor: table(two)?.next_cursor } }, { method: "POST" })) as Page;
+		expect(table(three)?.rows?.[0].term).toBe("t50");
+		const back = (await site.call("admin", { type: "block_action", action_id: "top_prev", page: "/insights" }, { method: "POST" })) as Page;
+		expect(table(back)?.rows?.[0].term).toBe("t25");
+		const reset = (await site.call("admin", { type: "block_action", action_id: "top_first", page: "/insights" }, { method: "POST" })) as Page;
+		expect(table(reset)?.rows?.map((row) => row.term)).toEqual(firstRows);
+		expect(JSON.stringify(reset)).not.toContain('"action_id":"top_prev"');
+	});
+
+	it("never serves a contact link saved before the stricter check", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.setting("contact_url", "/\t/evil.example");
+		expect(await site.call("config")).toMatchObject({ ok: true, contactUrl: "" });
+		await site.rt.fixtures.plugin.setting("contact_url", "/contact");
+		expect(await site.call("config")).toMatchObject({ contactUrl: "/contact" });
+	});
+
 	it("refuses a search log body that is too large", async () => {
 		const site = await openSite();
 		dispose = site.dispose;

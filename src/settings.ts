@@ -43,10 +43,15 @@ export function parseContactUrl(raw: unknown): { ok: true; value: string } | { o
 export async function loadSettings(ctx: PluginContext): Promise<KnowxSettings> {
 	const collection = await articleCollection(ctx);
 	const chosen = asStringArray(await ctx.settings.get<string>("search_collections"));
+	const contactRaw = await ctx.settings.get<string>("contact_url");
 	return {
 		collection,
 		askComment: (await ctx.settings.get<boolean>("ask_comment")) !== false,
-		contactUrl: asString(await ctx.settings.get<string>("contact_url")),
+		// Checked again on read: a link saved before a stricter check (0.1.4) is never served.
+		contactUrl: (() => {
+			const parsed = parseContactUrl(contactRaw);
+			return parsed.ok ? parsed.value : "";
+		})(),
 		searchCollections: chosen.length ? chosen : [collection],
 	};
 }

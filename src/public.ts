@@ -168,13 +168,19 @@ export function dayKey(date: Date): string {
  * One running counter per day (searches, and searches that found nothing), kept in kv and
  * updated on each logged search, so Insights totals never depend on how many terms a query reads.
  */
+// ponytail: compare-and-set with random backoff, at most DAY_TRIES tries. Proven with 40 parallel
+// writers (tests). Past that a burst can drop a count from the week total, never a search row;
+// per-writer shard keys summed on read would remove the ceiling.
+const DAY_TRIES = 60;
+
 async function bumpDay(ctx: PluginContext, empty: boolean): Promise<void> {
 	const key = dayKey(new Date());
-	for (let attempt = 0; attempt < 6; attempt += 1) {
+	for (let attempt = 0; attempt < DAY_TRIES; attempt += 1) {
 		const seen = await ctx.kv.getVersioned<string>(key);
 		const [searches, none] = (seen?.value || "0|0").split("|").map(Number);
 		const next = `${(searches || 0) + 1}|${(none || 0) + (empty ? 1 : 0)}`;
 		if ((await ctx.kv.compareAndSet(key, seen?.revision ?? null, next)).applied) return;
+		await new Promise((resolve) => setTimeout(resolve, Math.random() * Math.min(5 + attempt * 5, 50)));
 	}
 }
 

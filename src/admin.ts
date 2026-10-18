@@ -94,7 +94,7 @@ function guestBlocks(ctx: PluginContext, guestWrites: boolean): Array<Record<str
 			type: "banner",
 			title: "Guests cannot vote on this host",
 			description:
-				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. A guest who votes on Was this helpful is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders in astro.config.mjs.",
+				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. A guest who votes on Was this helpful is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders inside emdash({ ... }) in astro.config.mjs.",
 			variant: "default",
 		},
 		{
@@ -108,7 +108,7 @@ export async function renderInsights(
 	ctx: PluginContext,
 	extra?: Pick<BlockResponse, "toast">,
 	guestWrites = true,
-	topView: { find: string; cursor?: string } = { find: "" },
+	topView: TopView = { find: "" },
 ): Promise<BlockResponse> {
 	const status = await collectionStatus(ctx);
 	const top = [{ type: "header", text: "Insights" }, ...(await kitBlocks(ctx)), ...guestBlocks(ctx, guestWrites)];
@@ -149,14 +149,16 @@ export async function renderInsights(
 			description: `In the admin menu open Content, ${status.faqLabel}, and choose Add New. Published questions show on /docs/faq/.`,
 		});
 	}
-	const reports = await insightTables(ctx, topView);
+	// Read every vote once per load and share it between the stats and the tables.
+	const votes = await feedbackSummary(ctx).catch(() => null);
+	const reports = await insightTables(ctx, topView, votes);
 	return {
-		blocks: [...top, ...firstSteps, await insightStats(ctx, status.articleCount), ...reports],
+		blocks: [...top, ...firstSteps, await insightStats(ctx, status.articleCount, votes), ...reports],
 		toast: extra?.toast,
 	};
 }
 
-async function insightStats(ctx: PluginContext, articleCount: number): Promise<Record<string, unknown>> {
+async function insightStats(ctx: PluginContext, articleCount: number, votes: Votes): Promise<Record<string, unknown>> {
 	let searchesThisWeek = 0;
 	let emptyThisWeek = 0;
 	let series: Array<[number, number]> = [];
@@ -172,7 +174,8 @@ async function insightStats(ctx: PluginContext, articleCount: number): Promise<R
 	}
 	let rate = "None yet";
 	try {
-		const { yes, no } = await feedbackSummary(ctx);
+		if (!votes) throw new Error("votes not loaded");
+		const { yes, no } = votes;
 		if (yes + no) rate = `${Math.round((yes / (yes + no)) * 100)}%`;
 	} catch {
 		rate = "None yet";
@@ -211,7 +214,10 @@ async function insightStats(ctx: PluginContext, articleCount: number): Promise<R
 const TOP_PAGE = 25;
 
 /** Top searches: 25 at a time by count, with find by the start of the term. */
-async function topSearchBlocks(ctx: PluginContext, view: { find: string; cursor?: string }): Promise<Array<Record<string, unknown>>> {
+type TopView = { find: string; cursor?: string; page?: number };
+type Votes = Awaited<ReturnType<typeof feedbackSummary>> | null;
+
+async function topSearchBlocks(ctx: PluginContext, view: TopView): Promise<Array<Record<string, unknown>>> {
 	const find = view.find.trim().toLowerCase();
 	const page = await ctx.storage.searches.query({
 		where: find ? { term: { startsWith: find } } : undefined,
@@ -238,7 +244,7 @@ async function topSearchBlocks(ctx: PluginContext, view: { find: string; cursor?
 			type: "context",
 			text: find
 				? `${total} ${total === 1 ? "term starts" : "terms start"} with "${view.find}". Clear the box and press Find to see every term.`
-				: `${total} terms, most searched first, ${TOP_PAGE} at a time.`,
+				: `${total} terms, most searched first, ${TOP_PAGE} at a time.${(view.page ?? 1) > 1 ? ` Page ${view.page}.` : ""}`,
 		});
 	}
 	blocks.push(
@@ -248,10 +254,19 @@ async function topSearchBlocks(ctx: PluginContext, view: { find: string; cursor?
 				? { type: "empty", title: "Nothing matches", description: "No searched term starts with that text." }
 				: { type: "empty", title: "No searches yet", description: "Terms from the help search page show here." },
 	);
+	if ((view.page ?? 1) > 1) {
+		blocks.push({
+			type: "actions",
+			elements: [
+				{ type: "button", action_id: "top_prev", label: "Previous page" },
+				{ type: "button", action_id: "top_first", label: "First page" },
+			],
+		});
+	}
 	return blocks;
 }
 
-async function insightTables(ctx: PluginContext, top: { find: string; cursor?: string } = { find: "" }): Promise<Array<Record<string, unknown>>> {
+async function insightTables(ctx: PluginContext, top: TopView, votes: Votes): Promise<Array<Record<string, unknown>>> {
 	const blocks: Array<Record<string, unknown>> = [];
 	const collection = await articleCollection(ctx);
 	const titles = new Map<string, string>();
@@ -264,7 +279,8 @@ async function insightTables(ctx: PluginContext, top: { find: string; cursor?: s
 	};
 
 	try {
-		const { weak, comments } = await feedbackSummary(ctx);
+		if (!votes) throw new Error("votes not loaded");
+		const { weak, comments } = votes;
 		const weakRows = [];
 		for (const [doc, n] of weak.slice(0, 10)) weakRows.push({ article: await titleOf(doc), no: String(n.no), yes: String(n.yes) });
 		const commentRows = [];
@@ -529,12 +545,21 @@ export async function handleAdmin(input: unknown, ctx: PluginContext, guestWrite
 	if (asString(raw.widget) === "insights" || page.includes("widget:insights")) return renderDashboard(ctx);
 	const action = asString(raw.action_id);
 	// Top searches: Find and Load more keep the find text in kv; opening the page starts fresh.
-	if (action === "top_find" || action === "top_page") {
+	// The cursors of the pages shown so far are kept, so Previous page and First page can go back.
+	if (action === "top_find" || action === "top_page" || action === "top_prev" || action === "top_first") {
 		const saved = asRecord(await ctx.kv.get("view:top"));
-		const find = action === "top_find" ? asString(asRecord(raw.values).find).slice(0, 80) : asString(saved.find);
-		await ctx.kv.set("view:top", { find });
-		const cursor = action === "top_page" ? asString(asRecord(raw.value).cursor) || undefined : undefined;
-		return renderInsights(ctx, undefined, guestWrites, { find, cursor });
+		let find = asString(saved.find);
+		let pages = Array.isArray(saved.pages) ? saved.pages.map(asString).slice(-200) : [""];
+		if (!pages.length) pages = [""];
+		if (action === "top_find") {
+			find = asString(asRecord(raw.values).find).slice(0, 80);
+			pages = [""];
+		} else if (action === "top_page") pages.push(asString(asRecord(raw.value).cursor));
+		else if (action === "top_prev") pages = pages.length > 1 ? pages.slice(0, -1) : [""];
+		else pages = [""];
+		await ctx.kv.set("view:top", { find, pages });
+		const cursor = pages[pages.length - 1] || undefined;
+		return renderInsights(ctx, undefined, guestWrites, { find, cursor, page: pages.length });
 	}
 	if (asString(raw.type) === "form_submit") return saveSettings(raw, ctx);
 	if (asString(raw.type) === "block_action" && action === "kit_show") {
