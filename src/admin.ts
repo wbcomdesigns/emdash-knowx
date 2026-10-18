@@ -1,7 +1,8 @@
 import type { PluginContext } from "emdash/plugin";
 
 import { articleCollection, collectionStatus, entryRef, FAQ, publishedCount } from "./core";
-import { EMPTY_WINDOW_MS, emptyCount, lastEmptyAt } from "./public";
+import { dayTotals } from "./public";
+import { emptySearches, feedbackSummary } from "./report";
 import { listTopLevelCategories, PRODUCT_ICONS, saveProductIcon, useProductLayer } from "./products";
 import {
 	listContentTypes,
@@ -19,6 +20,18 @@ export type BlockResponse = { blocks: Array<Record<string, unknown>>; toast?: To
 const KIT_DONE = "kit_pages_done";
 const REPO_URL = "https://github.com/wbcomdesigns/emdash-knowx";
 
+/** The shared six-line kit command (starter BEFORE_YOU_INSTALL.md). */
+export function kitCommand(tag: string): string {
+	return [
+		`kit="$(mktemp -d)" &&`,
+		`  git clone --depth 1 \\`,
+		`    --branch ${tag} \\`,
+		`    ${REPO_URL} \\`,
+		`    "$kit/emdash-knowx" &&`,
+		`  "$kit/emdash-knowx/scripts/add-to-site.sh" .`,
+	].join("\n");
+}
+
 function guideUrl(ctx: PluginContext, anchor = ""): string {
 	return `${REPO_URL}/blob/v${ctx.plugin.version}/docs/website/getting-started/install.md${anchor}`;
 }
@@ -34,7 +47,7 @@ export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string
 	if ((await ctx.kv.get<string>(KIT_DONE)) === "1") {
 		return [
 			{ type: "context", text: `Visitor pages come from the KnowX site kit. After each plugin update, copy the kit for ${tag} again.` },
-			{ type: "actions", elements: [guide] },
+			{ type: "actions", elements: [guide, { type: "button", action_id: "kit_show", label: "Show the setup steps again" }] },
 		];
 	}
 	return [
@@ -49,9 +62,12 @@ export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string
 		{
 			type: "code",
 			language: "bash",
-			// A fresh private folder per run (never a fixed /tmp path), and the script runs only when the clone worked.
-			code: `kit="$(mktemp -d)" && git clone --branch ${tag} --depth 1 ${REPO_URL} "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .`,
+			// A fresh private folder per run (never a fixed /tmp path), and the script runs only when the
+			// clone worked. Six lines of 52 characters or fewer: a code block neither wraps nor scrolls,
+			// and this fits it at 768 and wider. On a phone the guide link below has the same command.
+			code: kitCommand(tag),
 		},
+		{ type: "actions", elements: [{ ...guide, label: "Copy it from the install guide on a phone" }] },
 		{
 			type: "fields",
 			fields: [
@@ -92,6 +108,7 @@ export async function renderInsights(
 	ctx: PluginContext,
 	extra?: Pick<BlockResponse, "toast">,
 	guestWrites = true,
+	topView: { find: string; cursor?: string } = { find: "" },
 ): Promise<BlockResponse> {
 	const status = await collectionStatus(ctx);
 	const top = [{ type: "header", text: "Insights" }, ...(await kitBlocks(ctx)), ...guestBlocks(ctx, guestWrites)];
@@ -132,7 +149,7 @@ export async function renderInsights(
 			description: `In the admin menu open Content, ${status.faqLabel}, and choose Add New. Published questions show on /docs/faq/.`,
 		});
 	}
-	const reports = await insightTables(ctx);
+	const reports = await insightTables(ctx, topView);
 	return {
 		blocks: [...top, ...firstSteps, await insightStats(ctx, status.articleCount), ...reports],
 		toast: extra?.toast,
@@ -140,58 +157,26 @@ export async function renderInsights(
 }
 
 async function insightStats(ctx: PluginContext, articleCount: number): Promise<Record<string, unknown>> {
-	const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 	let searchesThisWeek = 0;
 	let emptyThisWeek = 0;
-	let yes = 0;
-	let no = 0;
-	const series: Array<[number, number]> = [];
+	let series: Array<[number, number]> = [];
 	try {
-		const searches = await ctx.storage.searches.query({ limit: 200, orderBy: { lastAt: "desc" } });
-		const days = new Map<number, number>();
-		for (let i = 13; i >= 0; i--) {
-			const day = new Date();
-			day.setHours(0, 0, 0, 0);
-			day.setDate(day.getDate() - i);
-			days.set(day.getTime(), 0);
+		const days = await dayTotals(ctx, 14);
+		for (const day of days.slice(-7)) {
+			searchesThisWeek += day.searches;
+			emptyThisWeek += day.empty;
 		}
-		for (const item of searches.items) {
-			try {
-				const row = asRecord(item.data);
-				const last = asString(row.lastAt);
-				const count = asNumber(row.count) ?? 0;
-				if (last && last >= weekStart) searchesThisWeek += count;
-				if (lastEmptyAt(row) >= weekStart) emptyThisWeek += emptyCount(row);
-				if (!last) continue;
-				const day = new Date(last);
-				day.setHours(0, 0, 0, 0);
-				const key = day.getTime();
-				if (days.has(key)) days.set(key, (days.get(key) || 0) + count);
-			} catch {
-				/* one bad row must not hide the page */
-			}
-		}
-		for (const [time, value] of days) series.push([time, value]);
+		series = days.map((day) => [day.day, day.searches]);
 	} catch {
 		searchesThisWeek = 0;
 	}
+	let rate = "None yet";
 	try {
-		const votes = await ctx.storage.feedback.query({ limit: 200, orderBy: { createdAt: "desc" } });
-		for (const item of votes.items) {
-			try {
-				const row = asRecord(item.data);
-				if (row.helpful === true) yes += 1;
-				else no += 1;
-			} catch {
-				/* skip */
-			}
-		}
+		const { yes, no } = await feedbackSummary(ctx);
+		if (yes + no) rate = `${Math.round((yes / (yes + no)) * 100)}%`;
 	} catch {
-		yes = 0;
-		no = 0;
+		rate = "None yet";
 	}
-	const totalVotes = yes + no;
-	const rate = totalVotes ? `${Math.round((yes / totalVotes) * 100)}%` : "None yet";
 	return {
 		type: "columns",
 		columns: [
@@ -212,7 +197,7 @@ async function insightStats(ctx: PluginContext, articleCount: number): Promise<R
 					config: {
 						chart_type: "timeseries",
 						series: [{ name: "Searches", data: series }],
-						x_axis_name: "Day",
+						x_axis_name: "Day (UTC)",
 						y_axis_name: "Searches",
 						style: "line",
 						height: 220,
@@ -223,7 +208,50 @@ async function insightStats(ctx: PluginContext, articleCount: number): Promise<R
 	};
 }
 
-async function insightTables(ctx: PluginContext): Promise<Array<Record<string, unknown>>> {
+const TOP_PAGE = 25;
+
+/** Top searches: 25 at a time by count, with find by the start of the term. */
+async function topSearchBlocks(ctx: PluginContext, view: { find: string; cursor?: string }): Promise<Array<Record<string, unknown>>> {
+	const find = view.find.trim().toLowerCase();
+	const page = await ctx.storage.searches.query({
+		where: find ? { term: { startsWith: find } } : undefined,
+		orderBy: { count: "desc" },
+		limit: TOP_PAGE,
+		cursor: view.cursor,
+	} as never);
+	const rows = page.items.map((item) => {
+		const row = asRecord(item.data);
+		return { term: asString(row.term) || item.id, times: String(row.count ?? 0) };
+	});
+	const total = await ctx.storage.searches.count(find ? ({ term: { startsWith: find } } as never) : undefined);
+	const blocks: Array<Record<string, unknown>> = [
+		{ type: "header", text: "Top searches" },
+		{
+			type: "form",
+			block_id: "top_find",
+			fields: [{ type: "text_input", action_id: "find", label: "Find terms that start with", initial_value: view.find }],
+			submit: { label: view.find ? "Find again" : "Find", action_id: "top_find" },
+		},
+	];
+	if (find || total > TOP_PAGE) {
+		blocks.push({
+			type: "context",
+			text: find
+				? `${total} ${total === 1 ? "term starts" : "terms start"} with "${view.find}". Clear the box and press Find to see every term.`
+				: `${total} terms, most searched first, ${TOP_PAGE} at a time.`,
+		});
+	}
+	blocks.push(
+		rows.length
+			? { type: "table", page_action_id: "top_page", next_cursor: page.hasMore ? page.cursor : undefined, columns: cols("term", "times"), rows }
+			: find
+				? { type: "empty", title: "Nothing matches", description: "No searched term starts with that text." }
+				: { type: "empty", title: "No searches yet", description: "Terms from the help search page show here." },
+	);
+	return blocks;
+}
+
+async function insightTables(ctx: PluginContext, top: { find: string; cursor?: string } = { find: "" }): Promise<Array<Record<string, unknown>>> {
 	const blocks: Array<Record<string, unknown>> = [];
 	const collection = await articleCollection(ctx);
 	const titles = new Map<string, string>();
@@ -236,34 +264,11 @@ async function insightTables(ctx: PluginContext): Promise<Array<Record<string, u
 	};
 
 	try {
-		const votes = await ctx.storage.feedback.query({ limit: 200, orderBy: { createdAt: "desc" } });
-		const byDoc = new Map<string, { yes: number; no: number }>();
-		const comments: Array<{ article: string; comment: string }> = [];
-		for (const item of votes.items) {
-			try {
-				const row = asRecord(item.data);
-				const doc = asString(row.doc) || item.id.split(":")[0];
-				const bucket = byDoc.get(doc) || { yes: 0, no: 0 };
-				if (row.helpful === true) bucket.yes += 1;
-				else bucket.no += 1;
-				byDoc.set(doc, bucket);
-				const comment = asString(row.comment);
-				if (comment) comments.push({ article: await titleOf(doc), comment });
-			} catch {
-				/* one bad row must not hide the page */
-			}
-		}
+		const { weak, comments } = await feedbackSummary(ctx);
 		const weakRows = [];
-		for (const [doc, n] of [...byDoc.entries()]
-			.filter(([, v]) => v.no > v.yes)
-			.sort(([, a], [, b]) => b.no - a.no)
-			.slice(0, 10)) {
-			try {
-				weakRows.push({ article: await titleOf(doc), no: String(n.no), yes: String(n.yes) });
-			} catch {
-				weakRows.push({ article: "Help article", no: String(n.no), yes: String(n.yes) });
-			}
-		}
+		for (const [doc, n] of weak.slice(0, 10)) weakRows.push({ article: await titleOf(doc), no: String(n.no), yes: String(n.yes) });
+		const commentRows = [];
+		for (const item of comments) commentRows.push({ article: await titleOf(item.doc), comment: item.comment });
 		blocks.push({ type: "header", text: "Least helpful articles" });
 		blocks.push(
 			weakRows.length
@@ -272,8 +277,8 @@ async function insightTables(ctx: PluginContext): Promise<Array<Record<string, u
 		);
 		blocks.push({ type: "header", text: "Recent comments" });
 		blocks.push(
-			comments.length
-				? { type: "table", page_action_id: "comments_page", columns: cols("article", "comment"), rows: comments.slice(0, 20) }
+			commentRows.length
+				? { type: "table", page_action_id: "comments_page", columns: cols("article", "comment"), rows: commentRows }
 				: { type: "empty", title: "No comments yet", description: "Comments after a No vote show here as plain text." },
 		);
 	} catch {
@@ -281,32 +286,13 @@ async function insightTables(ctx: PluginContext): Promise<Array<Record<string, u
 	}
 
 	try {
-		const searches = await ctx.storage.searches.query({ limit: 50, orderBy: { count: "desc" } });
-		const top = searches.items.map((item) => {
-			const row = asRecord(item.data);
-			return { term: asString(row.term) || item.id, times: String(row.count ?? 0) };
-		});
-		// Empty searches from the last 30 days, most searched first. Read from the latest 200 terms,
-		// not the top 50, so a rare empty search still shows.
-		const since = new Date(Date.now() - EMPTY_WINDOW_MS).toISOString();
-		const recent = await ctx.storage.searches.query({ limit: 200, orderBy: { lastAt: "desc" } });
-		const empty = recent.items
-			.map((item) => ({ id: item.id, row: asRecord(item.data) }))
-			.filter(({ row }) => emptyCount(row) > 0 && lastEmptyAt(row) >= since)
-			.sort((a, b) => emptyCount(b.row) - emptyCount(a.row))
-			.slice(0, 50)
-			.map(({ id, row }) => ({ term: asString(row.term) || id, times: String(emptyCount(row)) }));
-		blocks.push({ type: "header", text: "Top searches" });
-		blocks.push(
-			top.length
-				? { type: "table", page_action_id: "top_page", columns: cols("term", "times"), rows: top }
-				: { type: "empty", title: "No searches yet", description: "Terms from the help search page show here." },
-		);
+		blocks.push(...(await topSearchBlocks(ctx, top)));
+		const empty = (await emptySearches(ctx)).slice(0, 50).map((item) => ({ term: item.term, times: String(item.times) }));
 		blocks.push({ type: "header", text: "Searches with no results" });
 		blocks.push(
 			empty.length
 				? { type: "table", page_action_id: "empty_page", columns: cols("term", "times"), rows: empty }
-				: { type: "empty", title: "No empty searches yet", description: "A search that found nothing shows here." },
+				: { type: "empty", title: "No empty searches yet", description: "A search that found nothing in the last 30 days shows here." },
 		);
 	} catch {
 		blocks.push({ type: "empty", title: "Search log could not be loaded", description: "Try again in a moment." });
@@ -499,38 +485,14 @@ export async function renderDashboard(ctx: PluginContext): Promise<BlockResponse
 	const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 	let emptyThisWeek = 0;
 	try {
-		const searches = await ctx.storage.searches.query({ limit: 200, orderBy: { lastAt: "desc" } });
-		for (const item of searches.items) {
-			try {
-				const row = asRecord(item.data);
-				if (emptyCount(row) > 0 && lastEmptyAt(row) >= weekStart) emptyThisWeek += 1;
-			} catch {
-				/* one bad row must not hide the card */
-			}
-		}
+		emptyThisWeek = (await emptySearches(ctx, weekStart)).length;
 	} catch {
 		emptyThisWeek = 0;
 	}
 
 	let weakest = "";
 	try {
-		const votes = await ctx.storage.feedback.query({ limit: 200, orderBy: { createdAt: "desc" } });
-		const byDoc = new Map<string, { yes: number; no: number }>();
-		for (const item of votes.items) {
-			try {
-				const row = asRecord(item.data);
-				const doc = asString(row.doc) || item.id.split(":")[0];
-				const bucket = byDoc.get(doc) || { yes: 0, no: 0 };
-				if (row.helpful === true) bucket.yes += 1;
-				else bucket.no += 1;
-				byDoc.set(doc, bucket);
-			} catch {
-				/* skip */
-			}
-		}
-		const worst = [...byDoc.entries()]
-			.filter(([, v]) => v.no > v.yes)
-			.sort(([, a], [, b]) => b.no - a.no)[0];
+		const worst = (await feedbackSummary(ctx)).weak[0];
 		if (worst) {
 			const collection = await articleCollection(ctx);
 			weakest = (await entryRef(ctx, collection, worst[0]).catch(() => null))?.title || "Help article";
@@ -565,7 +527,20 @@ export async function handleAdmin(input: unknown, ctx: PluginContext, guestWrite
 	const raw = asRecord(input);
 	const page = asString(raw.page);
 	if (asString(raw.widget) === "insights" || page.includes("widget:insights")) return renderDashboard(ctx);
+	const action = asString(raw.action_id);
+	// Top searches: Find and Load more keep the find text in kv; opening the page starts fresh.
+	if (action === "top_find" || action === "top_page") {
+		const saved = asRecord(await ctx.kv.get("view:top"));
+		const find = action === "top_find" ? asString(asRecord(raw.values).find).slice(0, 80) : asString(saved.find);
+		await ctx.kv.set("view:top", { find });
+		const cursor = action === "top_page" ? asString(asRecord(raw.value).cursor) || undefined : undefined;
+		return renderInsights(ctx, undefined, guestWrites, { find, cursor });
+	}
 	if (asString(raw.type) === "form_submit") return saveSettings(raw, ctx);
+	if (asString(raw.type) === "block_action" && action === "kit_show") {
+		await ctx.kv.delete(KIT_DONE);
+		return renderInsights(ctx, undefined, guestWrites);
+	}
 	if (asString(raw.type) === "block_action" && asString(raw.action_id) === "kit_done") {
 		await ctx.kv.set(KIT_DONE, "1");
 		return renderInsights(ctx, { toast: { message: "Noted. The setup card is now one line with the guide.", type: "success" } }, guestWrites);

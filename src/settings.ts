@@ -19,6 +19,9 @@ export type CollectionChoice = {
 };
 
 export function parseContactUrl(raw: unknown): { ok: true; value: string } | { ok: false } {
+	// Control characters (tab, CR, LF and the rest) are refused before trimming: a browser drops
+	// them from an address, so "/\t/evil.example" would become "//evil.example".
+	if (typeof raw === "string" && /[\x00-\x1f\x7f]/.test(raw)) return { ok: false };
 	const value = asString(raw);
 	if (!value) return { ok: true, value: "" };
 	// "/\evil.example" and "//evil.example" both leave the site in a browser. No address needs a backslash.

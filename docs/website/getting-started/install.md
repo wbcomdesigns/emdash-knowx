@@ -15,7 +15,7 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step.
 
-Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
+Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -23,12 +23,17 @@ Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines f
 2. From your site's root folder, get the kit for the version you just installed and copy it in:
 
    ```bash
-   kit="$(mktemp -d)" && git clone --branch v0.1.5 --depth 1 https://github.com/wbcomdesigns/emdash-knowx "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .
+   kit="$(mktemp -d)" &&
+     git clone --depth 1 \
+       --branch v0.1.5 \
+       https://github.com/wbcomdesigns/emdash-knowx \
+       "$kit/emdash-knowx" &&
+     "$kit/emdash-knowx/scripts/add-to-site.sh" .
    ```
 
    (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
-   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of any wording file you changed, creates the content types the plugin needs (if any), and prints the exact lines to paste into your templates, with the file names.
+   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of the wording file only when you changed it yourself, creates the content types the plugin needs (if any), and prints the exact lines to paste into your templates, with the file names.
 3. Paste the lines it printed. Restart the dev server.
 4. Add the menu links it printed in Admin, Menus.
 5. Open the plugin in the admin and follow its first screen.
@@ -79,20 +84,13 @@ goes in the top block, and `<DocSearch />` on the line after `<PortableText valu
 
 Open `/docs/` on your site. You see the search box and your topics. If you see a 404, the kit pages were not copied; see [Troubleshooting](../troubleshooting/troubleshooting.md).
 
-A guest sees no 401 from KnowX in the browser console, with one exception: on a host that gives no visitor address, a guest's vote goes to the member route, answers 401, and the page shows the sign-in link. That 401 is expected. On a plugin installed from local files (not the registry), the first call of each visit shows one expected 404 while the kit finds the plugin's address.
+Expected in the browser console: the first time a guest votes on **Was this helpful** in a visit, one `401` from the member vote route. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest. On a plugin installed from local files (not the registry), the first call of each visit shows one expected 404 while the kit finds the plugin's address.
 
 ## Guests and visitor addresses
 
-KnowX limits guests by the address EmDash gives it for each visitor. EmDash gives one on Cloudflare, or when `astro.config.mjs` names the header your proxy sets:
+EmDash gives a plugin the visitor's address only on Cloudflare, or when the site sets `trustedProxyHeaders` in `astro.config.mjs`. Without an address, guests are asked to sign in before they can vote on **Was this helpful**, so one person cannot vote many times, and help searches are not counted on Insights. Signed-in members still vote. Insights says so in one line while it is the case.
 
-```js
-emdash({
-	trustedProxyHeaders: ["x-forwarded-for"],
-	// ...
-}),
-```
-
-Only add that line when your site runs behind a proxy that sets the header. On a host that gives no address, a guest who votes on **Was this helpful** is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. Insights says so in one line while it is the case.
+Set `trustedProxyHeaders` only to a header that **your proxy writes itself and replaces** on every request. EmDash reads the first address in that header. Many proxies **add** to `X-Forwarded-For` instead of replacing it (nginx `$proxy_add_x_forwarded_for`, most load balancers), so the first address is whatever the visitor typed, and a guest could vote again and again. Behind nginx, set `proxy_set_header X-Real-IP $remote_addr;` and use `trustedProxyHeaders: ["x-real-ip"]`. Behind another proxy, use the header it overwrites with the connecting address. If you are not sure, leave it unset: members can still take part.
 
 ## After you update the plugin
 

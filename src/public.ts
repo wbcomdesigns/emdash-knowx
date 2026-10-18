@@ -6,7 +6,7 @@ import { loadSettings } from "./settings";
 import { asBoolean, asNumber, asRecord, asString, nowIso } from "./util";
 import { normaliseTerm, requestAddress, skipSearchTerm, visitorHash } from "./visitor";
 
-type RouteCtx = { input: unknown; requestMeta?: unknown; user?: unknown };
+type RouteCtx = { input: unknown; requestMeta?: unknown; user?: unknown; request?: unknown };
 
 function fail(code: string) {
 	return { ok: false, error: { code } };
@@ -55,6 +55,20 @@ export function memberWriter(routeCtx: RouteCtx): Writer | null {
 	return id ? { member: id } : null;
 }
 
+/** A search log body is a few short fields. Anything bigger is refused before it is read. */
+const LOG_BODY_MAX = 2048;
+
+function bodyTooLarge(routeCtx: RouteCtx): boolean {
+	const headers = (routeCtx.request as { headers?: { get?: (name: string) => string | null } } | undefined)?.headers;
+	const length = Number(headers?.get?.("content-length") ?? 0);
+	if (length > LOG_BODY_MAX) return true;
+	try {
+		return JSON.stringify(routeCtx.input ?? null).length > LOG_BODY_MAX;
+	} catch {
+		return true;
+	}
+}
+
 /**
  * Count one help search. The plugin cannot run search itself (sandboxed plugins have no search
  * API), so it never trusts a caller who says a search found results: a report of "nothing found"
@@ -64,6 +78,7 @@ export function memberWriter(routeCtx: RouteCtx): Writer | null {
  */
 export async function handleLogSearch(routeCtx: RouteCtx, ctx: PluginContext, writer: Writer | null) {
 	if (!writer) return GUEST_UNAVAILABLE;
+	if (bodyTooLarge(routeCtx)) return fail("VALIDATION_ERROR");
 	const raw = asRecord(routeCtx.input);
 	if (asString(raw.website) || asString(raw.hp)) return { ok: true };
 	const who = await visitorHash(ctx, writer);
@@ -71,6 +86,7 @@ export async function handleLogSearch(routeCtx: RouteCtx, ctx: PluginContext, wr
 	const term = normaliseTerm(raw.q);
 	if (skipSearchTerm(term)) return { ok: true };
 	const empty = asNumber(raw.found) === 0;
+	await bumpDay(ctx, empty);
 	const lastAt = nowIso();
 	const existing = asRecord(await ctx.storage.searches.get(term));
 	if (!existing.term) {
@@ -120,30 +136,53 @@ export function lastEmptyAt(row: Record<string, unknown>): string {
  * Keep the log at SEARCH_LOG_CAP rows. First go terms nobody searched in the last EMPTY_WINDOW_MS,
  * oldest first, so old busy terms cannot hold the log for good. Then the least searched terms, the
  * oldest of them first, so a flood of made-up one-off terms only pushes out other one-off terms and
- * never a term with recent real traffic.
+ * never a term with recent real traffic. Both orders are done by the storage query itself
+ * (it returns at most 100 rows and breaks ties by id, so the order must not rely on ties).
  */
 export async function trimSearchLog(ctx: PluginContext, cap = SEARCH_LOG_CAP): Promise<void> {
 	const total = await ctx.storage.searches.count();
 	if (total <= cap) return;
 	const excess = Math.min(100, total - cap);
 	const since = new Date(Date.now() - EMPTY_WINDOW_MS).toISOString();
-	const rowsOf = (result: { items: Array<{ id: string; data: unknown }> }) =>
-		result.items.map((item) => ({ id: item.id, row: asRecord(item.data) }));
-	const oldest = rowsOf(await ctx.storage.searches.query({ limit: excess, orderBy: { lastAt: "asc" } }));
-	const victims = oldest.filter(({ row }) => asString(row.lastAt) < since).map(({ id }) => id);
+	const stale = await ctx.storage.searches.query({ where: { lastAt: { lt: since } }, orderBy: { lastAt: "asc" }, limit: excess });
+	const victims = stale.items.map((item) => item.id);
 	if (victims.length < excess) {
-		// Read a wider slice of the least searched rows, then order by count and age here.
-		const low = rowsOf(await ctx.storage.searches.query({ limit: Math.min(500, excess + 200), orderBy: { count: "asc" } }));
-		const taken = new Set(victims);
-		victims.push(
-			...low
-				.filter(({ id }) => !taken.has(id))
-				.sort((x, y) => (asNumber(x.row.count) ?? 0) - (asNumber(y.row.count) ?? 0) || asString(x.row.lastAt).localeCompare(asString(y.row.lastAt)))
-				.slice(0, excess - victims.length)
-				.map(({ id }) => id),
-		);
+		const least = await ctx.storage.searches.query({ orderBy: { count: "asc", lastAt: "asc" }, limit: excess - victims.length });
+		victims.push(...least.items.map((item) => item.id));
 	}
 	await ctx.storage.searches.deleteMany(victims);
+}
+
+/** UTC day key for the running search counters. */
+export function dayKey(date: Date): string {
+	return `day:${date.toISOString().slice(0, 10)}`;
+}
+
+/**
+ * One running counter per day (searches, and searches that found nothing), kept in kv and
+ * updated on each logged search, so Insights totals never depend on how many terms a query reads.
+ */
+async function bumpDay(ctx: PluginContext, empty: boolean): Promise<void> {
+	const key = dayKey(new Date());
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		const seen = await ctx.kv.getVersioned<string>(key);
+		const [searches, none] = (seen?.value || "0|0").split("|").map(Number);
+		const next = `${(searches || 0) + 1}|${(none || 0) + (empty ? 1 : 0)}`;
+		if ((await ctx.kv.compareAndSet(key, seen?.revision ?? null, next)).applied) return;
+	}
+}
+
+/** Searches and empty searches per UTC day for the last `days` days, oldest first. */
+export async function dayTotals(ctx: PluginContext, days: number): Promise<Array<{ day: number; searches: number; empty: number }>> {
+	const out = [];
+	for (let i = days - 1; i >= 0; i -= 1) {
+		const date = new Date();
+		date.setUTCHours(0, 0, 0, 0);
+		date.setUTCDate(date.getUTCDate() - i);
+		const [searches, empty] = (asString(await ctx.kv.get<string>(dayKey(date))) || "0|0").split("|").map(Number);
+		out.push({ day: date.getTime(), searches: searches || 0, empty: empty || 0 });
+	}
+	return out;
 }
 
 export async function handleTally(routeCtx: RouteCtx, ctx: PluginContext) {

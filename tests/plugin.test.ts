@@ -139,7 +139,9 @@ describe("settings", () => {
 		expect(page).toContain("Still need help");
 		expect(page).not.toContain("Each group saves on its own.");
 		expect(page).not.toContain("(search off)");
-		expect((await site.rt.admin.loadPage("/insights")).blocks.map((block) => block.type)).not.toContain("form");
+		// Insights has only the Top searches find box, no settings form.
+		const forms = (await site.rt.admin.loadPage("/insights")).blocks.filter((block) => block.type === "form");
+		expect(forms.map((block) => (block as { block_id?: string }).block_id)).toEqual(["top_find"]);
 
 		const admin = (input: Record<string, unknown>) => site.call("admin", input);
 		const contact = await admin({

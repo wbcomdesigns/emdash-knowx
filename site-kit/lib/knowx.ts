@@ -172,4 +172,17 @@ export const SEARCH_ROUTES: Record<string, string> = {
 	pages: "/pages/:slug",
 };
 
+/**
+ * A per-browser id (browser only). Still sent with votes and search logs so a site whose engine is
+ * one version older (0.1.4, which keys guests by it when the host gives no address) keeps one vote
+ * per browser while its kit is newer. 0.1.5 ignores it.
+ */
+export function visitorId(): string {
+	const found = document.cookie.match(/(?:^|; )knowx_vid=([^;]+)/);
+	if (found?.[1]) return decodeURIComponent(found[1]);
+	const id = crypto.randomUUID();
+	document.cookie = `knowx_vid=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+	return id;
+}
+
 export { kx, kindLabel };

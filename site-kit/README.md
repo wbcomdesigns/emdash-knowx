@@ -15,7 +15,7 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step.
 
-Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
+Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -23,12 +23,17 @@ Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines f
 2. From your site's root folder, get the kit for the version you just installed and copy it in:
 
    ```bash
-   kit="$(mktemp -d)" && git clone --branch v0.1.5 --depth 1 https://github.com/wbcomdesigns/emdash-knowx "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .
+   kit="$(mktemp -d)" &&
+     git clone --depth 1 \
+       --branch v0.1.5 \
+       https://github.com/wbcomdesigns/emdash-knowx \
+       "$kit/emdash-knowx" &&
+     "$kit/emdash-knowx/scripts/add-to-site.sh" .
    ```
 
    (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
-   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of any wording file you changed, creates the content types the plugin needs (if any), and prints the exact lines to paste into your templates, with the file names.
+   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of the wording file only when you changed it yourself, creates the content types the plugin needs (if any), and prints the exact lines to paste into your templates, with the file names.
 3. Paste the lines it printed. Restart the dev server.
 4. Add the menu links it printed in Admin, Menus.
 5. Open the plugin in the admin and follow its first screen.
@@ -49,7 +54,7 @@ To reword or translate what visitors see, edit `src/lib/knowx-strings.ts` only. 
 
 - **Search.** Help search uses EmDash search. Turn search on for every collection you tick on Settings.
 - **Slugs.** A page with the slug `docs` would be hidden by the kit pages. Rename it first.
-- **Guests.** Guests vote and their searches are counted only when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` in `astro.config.mjs`). Elsewhere guests see a sign-in link instead, and members vote as usual.
+- **Guests.** Guests vote and their searches are counted only when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` in `astro.config.mjs`). Elsewhere guests are asked to sign in, and members vote as usual. Set `trustedProxyHeaders` only to a header your proxy overwrites (behind nginx: `proxy_set_header X-Real-IP $remote_addr;` and `trustedProxyHeaders: ["x-real-ip"]`); see the install guide, Guests and visitor addresses.
 - **Contact.** Set a contact page, http(s) link, or mailto address on Admin, KnowX, Settings. Leave it empty to hide "Still need help?".
 - **Permissions.** The plugin only reads content, schema and taxonomies. It never writes site content.
 - **Try it on a preview first.** Deploy a preview version, walk `docs/qa/QA_CHECKLIST.md` there, then go live.
@@ -67,7 +72,7 @@ Guests can search, read articles, vote helpful (on a host that gives a visitor a
 - `/docs/category/{slug}/` articles in that topic
 - Admin, KnowX: Insights and Settings, plus a card on the EmDash dashboard
 
-A guest sees no 401 from KnowX in the browser console, except one expected 401 when a guest votes on a host that gives no visitor address (the page then shows the sign-in link).
+Expected in the browser console: the first time a guest votes on Was this helpful in a visit, one `401` from the member vote route. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest.
 
 ## Working on this plugin
 

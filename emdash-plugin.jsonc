@@ -45,7 +45,10 @@
 			"indexes": [
 				"found",
 				"count",
-				"lastAt"
+				"lastAt",
+				"term",
+				"empty",
+				"lastEmptyAt"
 			]
 		},
 		"product_icons": {

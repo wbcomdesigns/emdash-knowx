@@ -58,6 +58,8 @@ export const kx = {
 	/** Shown instead of Yes and No when guests cannot vote on this host. */
 	helpfulSignIn: "Sign in to say whether this helped.",
 	helpfulSignInLink: "Sign in",
+	/** Shown on hosts where only signed-in readers can vote. */
+	helpfulMembersOnly: "Signed-in readers can vote here.",
 	stillNeedTitle: "Still need help?",
 	stillNeedBody: "If this did not answer your question, you can contact us.",
 	stillNeedButton: "Contact us",
@@ -83,6 +85,7 @@ const CODES: Record<string, string> = {
 	NOT_FOUND: kx.notFoundTitle,
 	RATE_LIMITED: kx.rateLimited,
 	GUEST_UNAVAILABLE: kx.helpfulSignIn,
+	SIGN_IN_REQUIRED: kx.helpfulSignIn,
 	OFFLINE: kx.offline,
 	FAILED: kx.fallback,
 };

@@ -1,8 +1,8 @@
 ## 0.1.5
 
 - Security: guests vote and searches are counted only when the host gives EmDash the visitor's address; elsewhere guests sign in to vote. Search log capped at 5000 terms.
-- New: one command copies the kit and creates the content types. Insights shows a Set up visitor pages card.
-- Fix: help pages line up with the theme frame; dark mode buttons pass 4.5:1.
+- New: one command copies the kit and creates the content types. Insights shows a Set up visitor pages card, and Top searches has find and paging.
+- Fix: Insights counts every search and vote; help pages line up with the theme frame; dark mode buttons pass 4.5:1.
 
 ## 0.1.4
 
@@ -27,4 +27,15 @@
 
 - New: help center pages, Was this helpful votes, search log, Insights, Settings and a dashboard card.
 
-Copy the site kit again after every update. Full history: https://github.com/wbcomdesigns/emdash-knowx/blob/main/CHANGELOG.md
+Copy the kit again after you update, from your site's root folder:
+
+```bash
+kit="$(mktemp -d)" &&
+  git clone --depth 1 \
+    --branch v0.1.5 \
+    https://github.com/wbcomdesigns/emdash-knowx \
+    "$kit/emdash-knowx" &&
+  "$kit/emdash-knowx/scripts/add-to-site.sh" .
+```
+
+Full history: https://github.com/wbcomdesigns/emdash-knowx/blob/main/CHANGELOG.md

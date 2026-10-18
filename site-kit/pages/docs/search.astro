@@ -91,6 +91,7 @@ const log = q && !failed && !honeypot ? jsonForScript({ q, found: items.length }
 
 <script>
 	import { api } from "../../lib/wbcom-kit";
+	import { visitorId } from "../../lib/knowx";
 
 	const box = document.querySelector("[data-kx-search-log]");
 	if (box) {
@@ -98,7 +99,7 @@ const log = q && !failed && !honeypot ? jsonForScript({ q, found: items.length }
 			const { q, found } = JSON.parse(box.textContent || "{}");
 			// Fire and forget: a refused or failed log never changes what the visitor sees. With no
 			// visitor address on this host the route refuses and nothing is counted.
-			void api("knowx", "log_search", { q, found });
+			void api("knowx", "log_search", { q, found, vid: visitorId() });
 		} catch {
 			/* nothing to log */
 		}

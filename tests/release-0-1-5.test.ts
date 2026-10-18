@@ -127,44 +127,34 @@ describe("search log (#41)", () => {
 		expect(card).toContain("1 search found nothing this week");
 	});
 
-	it("trims stale terms first, then the least searched, oldest of them first", async () => {
-		const { trimSearchLog } = await import("../src/public");
-		const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
-		const rows = new Map<string, { count: number; lastAt: string }>();
-		rows.set("stale busy", { count: 50, lastAt: day(60) });
-		for (let i = 0; i < 3; i += 1) rows.set(`one-off ${i}`, { count: 1, lastAt: day(3 - i) });
-		for (let i = 0; i < 8; i += 1) rows.set(`recent real ${i}`, { count: 5, lastAt: day(1) });
-		const searches = {
-			count: async () => rows.size,
-			query: async ({ limit, orderBy }: { limit: number; orderBy: Record<string, string> }) => ({
-				items: [...rows.entries()]
-					.sort((x, y) => (orderBy.count ? x[1].count - y[1].count : x[1].lastAt.localeCompare(y[1].lastAt)))
-					.slice(0, limit)
-					.map(([id, data]) => ({ id, data })),
-			}),
-			deleteMany: async (ids: string[]) => ids.filter((id) => rows.delete(id)).length,
-		};
-		await trimSearchLog({ storage: { searches } } as never, 9);
-		expect(rows.size).toBe(9);
-		// The stale busy term went first, then the two oldest one-off terms. Recent real terms stayed.
-		expect(rows.has("stale busy")).toBe(false);
-		expect([...rows.keys()].filter((id) => id.startsWith("one-off"))).toEqual(["one-off 2"]);
-		expect([...rows.keys()].filter((id) => id.startsWith("recent real"))).toHaveLength(8);
-	});
-
-	it("a log full of old busy terms still takes new terms", async () => {
+	it("on the real host, the trim goes stale first, then least searched oldest first, never by name", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt);
 		const { SEARCH_LOG_CAP } = await import("../src/public");
-		for (let i = 0; i < SEARCH_LOG_CAP; i += 1) {
-			await site.rt.fixtures.plugin.storage("searches", `old ${i}`, { term: `old ${i}`, count: 40, empty: 0, found: true, lastAt: "2025-01-01T00:00:00.000Z" });
-		}
-		await site.call("log_search", { q: "brand new term", found: 0 }, guest("198.51.100.50"));
-		const page = await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" });
-		const blocks = (page as { blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }> }).blocks;
-		expect(blocks.find((block) => block.page_action_id === "empty_page")?.rows).toEqual([{ term: "brand new term", times: "1" }]);
-	}, 240_000);
+		const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+		const put = (term: string, count: number, lastAt: string) =>
+			site.rt.fixtures.plugin.storage("searches", term, { term, count, empty: 0, found: true, lastAt });
+		// Busy recent terms fill most of the log. Names sort both before and after the one-offs.
+		for (let i = 0; i < SEARCH_LOG_CAP - 4; i += 1) await put(`busy ${String(i).padStart(4, "0")}`, 5, ago(1));
+		await put("zzz stale busy", 50, ago(60)); // stale: goes first despite its count and late name
+		await put("zzz old one-off", 1, ago(10)); // the oldest one-off: goes next despite its late name
+		await put("aaa newer one-off", 1, ago(2)); // a newer one-off with an early name: stays
+		await put("mmm newest one-off", 1, ago(1));
+		const exists = async (term: string) => {
+			const blocks = (await site.call("admin", { type: "form_submit", action_id: "top_find", page: "/insights", values: { find: term } }, { method: "POST" })) as {
+				blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }>;
+			};
+			return Boolean(blocks.blocks.find((block) => block.page_action_id === "top_page")?.rows?.some((row) => row.term === term));
+		};
+		await site.call("log_search", { q: "new term one", found: 1 }, guest("198.51.100.60"));
+		expect(await exists("zzz stale busy")).toBe(false);
+		expect(await exists("zzz old one-off")).toBe(true);
+		await site.call("log_search", { q: "new term two", found: 1 }, guest("198.51.100.61"));
+		expect(await exists("zzz old one-off")).toBe(false);
+		expect(await exists("aaa newer one-off")).toBe(true);
+		expect(await exists("busy 0000")).toBe(true);
+	}, 300_000);
 
 	it("a flood of made-up one-off terms never pushes out recent terms with real traffic", async () => {
 		const site = await openSite();
@@ -175,22 +165,48 @@ describe("search log (#41)", () => {
 		for (let i = 0; i < SEARCH_LOG_CAP; i += 1) {
 			await site.rt.fixtures.plugin.storage("searches", `real ${i}`, { term: `real ${i}`, count: 3, empty: 0, found: true, lastAt: recent });
 		}
-		// Junk from many addresses, so the per-guest limit does not stop it first.
-		for (let i = 0; i < 30; i += 1) {
-			await site.call("log_search", { q: `junk term ${i}`, found: 0 }, guest(`198.51.100.${i + 1}`));
-		}
-		const load = async () =>
-			((await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" })) as {
+		for (let i = 0; i < 30; i += 1) await site.call("log_search", { q: `junk term ${i}`, found: 0 }, guest(`198.51.100.${i + 1}`));
+		const find = async (term: string) =>
+			((await site.call("admin", { type: "form_submit", action_id: "top_find", page: "/insights", values: { find: term } }, { method: "POST" })) as {
 				blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }>;
-			}).blocks;
-		// Every junk term was dropped on arrival: each real term has more traffic.
-		expect((await load()).find((block) => block.page_action_id === "empty_page")?.rows).toBeUndefined();
-		// A real term was never evicted: logging it again adds to its count (3 + 1).
-		await site.call("log_search", { q: "real 0", found: 1 }, guest("203.0.113.200"));
-		const top = (await load()).find((block) => block.page_action_id === "top_page")?.rows || [];
-		expect(top.find((row) => row.term === "real 0")?.times).toBe("4");
-		expect(top.filter((row) => row.term.startsWith("junk"))).toEqual([]);
-	}, 240_000);
+			}).blocks.find((block) => block.page_action_id === "top_page")?.rows || [];
+		expect(await find("junk")).toEqual([]);
+		await site.call("log_search", { q: "real 4999", found: 1 }, guest("203.0.113.200"));
+		expect((await find("real 4999")).find((row) => row.term === "real 4999")?.times).toBe("4");
+	}, 300_000);
+
+	it("empty searches stay on Insights behind 4800 busy terms, and the week counts every search", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		await site.call("log_search", { q: "refund policy", found: 0 }, guest("198.51.100.70"));
+		await site.call("log_search", { q: "export to csv", found: 0 }, guest("198.51.100.71"));
+		const later = new Date(Date.now() + 60_000).toISOString();
+		// 4800 busy terms keep the log under its 5000 cap, so nothing is trimmed: what is tested is
+		// that Insights reads past the 100 rows one storage query returns.
+		for (let i = 0; i < 4800; i += 1) {
+			await site.rt.fixtures.plugin.storage("searches", `busy ${i}`, { term: `busy ${i}`, count: 9, empty: 0, found: true, lastAt: later });
+		}
+		for (let i = 0; i < 120; i += 1) await site.call("log_search", { q: `found ${i}`, found: 2 }, guest(`203.0.113.${(i % 200) + 1}`));
+		const page = (await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" })) as {
+			blocks: Array<Record<string, unknown>>;
+		};
+		const empty = page.blocks.find((block) => block.page_action_id === "empty_page") as { rows: Array<Record<string, string>> } | undefined;
+		expect(JSON.stringify(page.blocks.slice(-6))).toContain("empty_page");
+		expect(empty?.rows.map((row) => row.term).sort()).toEqual(["export to csv", "refund policy"]);
+		const text = JSON.stringify(page);
+		expect(text).toContain('"label":"Searches this week","value":"122"');
+		expect(text).toContain('"label":"Searches with no results","value":"2"');
+		const card = JSON.stringify(await site.call("admin", { widget: "insights" }, { method: "POST" }));
+		expect(card).toContain("2 searches found nothing this week");
+	}, 300_000);
+
+	it("refuses a search log body that is too large", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const big = await site.call("log_search", { q: "x", found: 0, pad: "a".repeat(5000) }, guest("198.51.100.80"));
+		expect(big).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+	});
 
 	it("never stores a phone number in any spacing, or an email address", () => {
 		expect(skipSearchTerm("555-123-4567")).toBe(true);
@@ -206,6 +222,10 @@ describe("search log (#41)", () => {
 		expect(parseContactUrl("/\\evil.example")).toEqual({ ok: false });
 		expect(parseContactUrl("/contact\\x")).toEqual({ ok: false });
 		expect(parseContactUrl("//evil.example")).toEqual({ ok: false });
+		expect(parseContactUrl("/\t/evil.example")).toEqual({ ok: false });
+		expect(parseContactUrl("/\n/evil.example")).toEqual({ ok: false });
+		expect(parseContactUrl("/contact\r\n")).toEqual({ ok: false });
+		expect(parseContactUrl("/con\x7ftact")).toEqual({ ok: false });
 		expect(parseContactUrl("/contact")).toEqual({ ok: true, value: "/contact" });
 	});
 });
@@ -216,8 +236,13 @@ describe("first admin screen (#43, starter #2)", () => {
 		dispose = site.dispose;
 		const page = await insightsJson(site);
 		expect(page).toContain("Set up visitor pages");
-		const code = (JSON.parse(page).blocks as Array<{ type: string; code?: string }>).find((block) => block.type === "code")?.code;
-		expect(code).toMatch(/^kit="\$\(mktemp -d\)" && git clone --branch v\d+\.\d+\.\d+ --depth 1 https:\/\/github.com\/wbcomdesigns\/emdash-knowx "\$kit\/emdash-knowx" && "\$kit\/emdash-knowx\/scripts\/add-to-site.sh" \.$/);
+		const code = (JSON.parse(page).blocks as Array<{ type: string; code?: string }>).find((block) => block.type === "code")?.code || "";
+		const lines = code.split("\n");
+		expect(lines).toHaveLength(6);
+		for (const line of lines) expect(line.length).toBeLessThanOrEqual(52);
+		expect(lines[0]).toBe('kit="$(mktemp -d)" &&');
+		expect(code).toMatch(/--branch v\d+\.\d+\.\d+ \\/);
+		expect(page).toContain("Copy it from the install guide on a phone");
 		expect(page).not.toContain("/tmp/emdash-knowx");
 		expect(page).toContain("/docs/faq/");
 		expect(page).not.toContain("blob/main");
@@ -227,6 +252,18 @@ describe("first admin screen (#43, starter #2)", () => {
 		expect(done).not.toContain("Set up visitor pages");
 		expect(done).toContain("Install guide");
 		expect(await insightsJson(site)).not.toContain("Set up visitor pages");
+		const again = JSON.stringify(await site.call("admin", { type: "block_action", action_id: "kit_show", page: "/insights" }, { method: "POST" }));
+		expect(again).toContain("Set up visitor pages");
+	});
+
+	it("ships the hash of this version's wording file as the last line of knowx-strings.sums", async () => {
+		// @ts-expect-error vite raw import
+		const sums = String((await import("../site-kit/lib/knowx-strings.sums?raw")).default).trim().split("\n");
+		// @ts-expect-error vite raw import
+		const file = String((await import("../site-kit/lib/knowx-strings.ts?raw")).default);
+		const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(file)));
+		const now = [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+		expect(sums.at(-1)).toBe(now);
 	});
 
 	it("names where to add the first help article and FAQ once the content types exist", async () => {

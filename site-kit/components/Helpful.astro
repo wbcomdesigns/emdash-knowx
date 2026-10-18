@@ -29,6 +29,8 @@ const copy = jsonForScript({
 	stillBody: kx.stillNeedBody,
 	stillButton: kx.stillNeedButton,
 	question: kx.helpfulQuestion,
+	membersOnly: kx.helpfulMembersOnly,
+	signIn: kx.helpfulSignIn,
 });
 const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pathname)}`;
 ---
@@ -37,7 +39,7 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 	<script type="application/json" data-kx-helpful-copy set:html={copy}></script>
 	<h2 id="kx-helpful-h">{kx.helpfulQuestion}</h2>
 	<p class="wb-sr" data-kx-tally hidden></p>
-	<p class="wb-muted" data-kx-signin hidden>{kx.helpfulSignIn} <a href={signIn}>{kx.helpfulSignInLink}</a></p>
+	<p class="wb-muted" data-kx-signin aria-live="polite" tabindex="-1" hidden><span data-kx-signin-text>{kx.helpfulSignIn}</span> <a href={signIn}>{kx.helpfulSignInLink}</a></p>
 	<div class="wb-summary" data-kx-buttons>
 		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="yes" aria-pressed="false">{kx.helpfulYes}</button>
 		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="no" aria-pressed="false">{kx.helpfulNo}</button>
@@ -61,6 +63,27 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 <script>
 	import { api } from "../lib/wbcom-kit";
 	import { phrase } from "../lib/knowx-strings";
+	import { visitorId } from "../lib/knowx";
+
+	/** Refusals that mean "sign in to do this", from this engine or the one before it. */
+	const SIGN_IN_CODES = new Set(["SIGN_IN_REQUIRED", "GUEST_UNAVAILABLE"]);
+
+	// Whether this visit is a guest: learned from the first member-route answer, kept for the visit,
+	// so a guest meets at most one expected 401 per visit.
+	function knownGuest(): boolean {
+		try {
+			return sessionStorage.getItem("knowx-guest") === "1";
+		} catch {
+			return false;
+		}
+	}
+	function rememberGuest(): void {
+		try {
+			sessionStorage.setItem("knowx-guest", "1");
+		} catch {
+			/* storage blocked: one more 401 next time */
+		}
+	}
 
 	function copyOf(root: HTMLElement) {
 		try {
@@ -99,14 +122,24 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 		const contact = root.querySelector<HTMLElement>("[data-kx-contact]");
 		const contactLink = root.querySelector<HTMLAnchorElement>("[data-kx-contact-link]");
 		const [config, health] = await Promise.all([api("knowx", "config"), api("knowx", "health")]);
-		// No visitor address on this host: only signed-in members can vote.
+		// No visitor address on this host: only signed-in members can vote. guestWrites is per host,
+		// so every visitor gets the same hint; a missing field (engine 0.1.4) means guests may vote.
 		const membersOnly = health.ok === true && health.guestWrites === false;
+		const signIn = root.querySelector<HTMLElement>("[data-kx-signin]");
+		const signInText = root.querySelector<HTMLElement>("[data-kx-signin-text]");
+		if (membersOnly && signIn) {
+			if (signInText && copy.membersOnly) signInText.textContent = copy.membersOnly;
+			signIn.hidden = false;
+		}
 		const askToSignIn = () => {
 			const buttons = root.querySelector<HTMLElement>("[data-kx-buttons]");
-			const signIn = root.querySelector<HTMLElement>("[data-kx-signin]");
 			if (buttons) buttons.hidden = true;
-			if (signIn) signIn.hidden = false;
 			if (status) status.hidden = true;
+			if (signIn) {
+				if (signInText && copy.signIn) signInText.textContent = copy.signIn;
+				signIn.hidden = false;
+				signIn.focus();
+			}
 		};
 		const askComment = config.askComment !== false;
 		const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
@@ -115,9 +148,22 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 
 		const vote = async (helpful: boolean, comment = "") => {
 			if (!status) return;
-			const result = await api("knowx", membersOnly ? "helpful_member" : "helpful", { id, helpful, comment });
+			const body = { id, helpful, comment, vid: visitorId() };
+			// A signed-in member votes only through the member route (one vote per member, never one by
+			// address as well). A guest's member call answers 401 once; the visit then goes straight to
+			// the guest route. An engine without the member route (0.1.4) also falls back to it.
+			let result = knownGuest() ? null : await api("knowx", "helpful_member", body);
+			if (!result || !result.ok) {
+				const code = result?.error?.code;
+				if (result && code !== "SIGN_IN_REQUIRED" && code !== "FAILED") {
+					// A real refusal from the member route (rate limit, missing article): show it.
+				} else {
+					if (code === "SIGN_IN_REQUIRED") rememberGuest();
+					result = membersOnly ? { ok: false, error: { code: "GUEST_UNAVAILABLE" } } : await api("knowx", "helpful", body);
+				}
+			}
 			status.hidden = false;
-			if (result.error?.code === "SIGN_IN_REQUIRED" || result.error?.code === "GUEST_UNAVAILABLE") {
+			if (SIGN_IN_CODES.has(result.error?.code || "")) {
 				askToSignIn();
 				return;
 			}

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Adds the KnowX help pages to an EmDash site:
-#   kit="$(mktemp -d)" && git clone --branch v<version> --depth 1 https://github.com/wbcomdesigns/emdash-knowx "$kit/emdash-knowx" && "$kit/emdash-knowx/scripts/add-to-site.sh" .
+# Adds the KnowX help pages to an EmDash site. Run from the site's root folder (see the install guide):
+#   kit="$(mktemp -d)" &&
+#     git clone --depth 1 \
+#       --branch v<version> \
+#       https://github.com/wbcomdesigns/emdash-knowx \
+#       "$kit/emdash-knowx" &&
+#     "$kit/emdash-knowx/scripts/add-to-site.sh" .
 # Safe to run again after a plugin update. It replaces KnowX's own files, never replaces a newer
 # shared file another Wbcom plugin copied, never touches src/layouts/KnowXLayout.astro once it
-# exists, and keeps a dated backup of a wording file you changed.
+# exists, and keeps a dated backup of the wording file only when you edited it yourself.
 set -euo pipefail
 
 PLUGIN="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,8 +26,8 @@ if ! ls "$SITE"/astro.config.* >/dev/null 2>&1 || ! grep -q "emdash" "$SITE"/ast
 	exit 1
 fi
 
-VERSION="$(node -p "require('$PLUGIN/package.json').version")"
-STAMP="$(date +%Y%m%d)"
+VERSION="$(node -e 'console.log(require(process.argv[1]).version)' "$PLUGIN/package.json")"
+SUMS="$KIT/lib/knowx-strings.sums"
 notes=()
 
 # Line 1 of each shared file carries "wbcom-shared: N". A copy without the number counts as 0.
@@ -33,21 +38,33 @@ copy() { # copy <kit file> <site file>
 	name="$(basename "$from")"
 	mkdir -p "$(dirname "$to")"
 	if [[ "$name" == wbcom-kit.ts || "$name" == wbcom-base.css ]] && [[ -f "$to" ]]; then
-		if (( $(shared_version "$from") < $(shared_version "$to") )); then
-			notes+=("Kept your newer ${to#"$SITE/"} (wbcom-shared $(shared_version "$to"), this kit has $(shared_version "$from")).")
+		local have want
+		have="$(shared_version "$to")"
+		want="$(shared_version "$from")"
+		if (( want < have )); then
+			notes+=("Kept your newer ${to#"$SITE/"} (wbcom-shared $have, this kit has $want).")
 			return
 		fi
+		(( want > have )) && notes+=("Upgraded ${to#"$SITE/"} from wbcom-shared $have to $want (another Wbcom plugin had copied the older one).")
 	fi
+	# knowx-strings.sums lists the SHA-256 of the file at every release: a file whose hash is in
+	# it was never edited, so it is replaced quietly. Only an edited file is backed up.
 	if [[ "$name" == knowx-strings.ts && -f "$to" ]] && ! cmp -s "$from" "$to"; then
-		cp "$to" "$to.bak-$STAMP"
-		notes+=("Your ${to#"$SITE/"} differed from this version. The old one is saved as ${to#"$SITE/"}.bak-$STAMP: copy your wording back from it.")
+		local sum backup
+		sum="$(shasum -a 256 "$to" | cut -d' ' -f1)"
+		if ! grep -qx "$sum" "$SUMS"; then
+			backup="$to.bak-$(date +%Y%m%d)"
+			[[ -e "$backup" ]] && backup="$to.bak-$(date +%Y%m%d-%H%M%S)"
+			cp "$to" "$backup"
+			notes+=("You had edited ${to#"$SITE/"}. Your version is saved as ${backup#"$SITE/"}: copy your wording back from it.")
+		fi
 	fi
 	cp "$from" "$to"
 }
 
 for part in lib styles components; do
 	for file in "$KIT/$part"/*; do
-		[[ -f "$file" && "$(basename "$file")" != .gitkeep ]] && copy "$file" "$SITE/src/$part/$(basename "$file")"
+		[[ -f "$file" && "$(basename "$file")" != .gitkeep && "$file" != *.sums ]] && copy "$file" "$SITE/src/$part/$(basename "$file")"
 	done
 done
 while IFS= read -r file; do
@@ -118,7 +135,13 @@ Left for you:
      Content, FAQs: add your first question. Then open /docs/ and /docs/faq/.
 
 After each plugin update, run this from the site root with the new version's tag:
-  kit="\$(mktemp -d)" && git clone --branch v<new version> --depth 1 https://github.com/wbcomdesigns/emdash-knowx "\$kit/emdash-knowx" && "\$kit/emdash-knowx/scripts/add-to-site.sh" .
+
+  kit="\$(mktemp -d)" &&
+    git clone --depth 1 \\
+      --branch v<new version> \\
+      https://github.com/wbcomdesigns/emdash-knowx \\
+      "\$kit/emdash-knowx" &&
+    "\$kit/emdash-knowx/scripts/add-to-site.sh" .
 
 Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v$VERSION/docs/website/getting-started/install.md
 DONE

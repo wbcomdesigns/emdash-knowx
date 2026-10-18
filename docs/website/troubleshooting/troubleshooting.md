@@ -35,3 +35,7 @@ Check `src/layouts/KnowXLayout.astro` points at your site's layout. See [Wording
 ## Insights is empty
 
 Insights fills as visitors search and vote. On a new site, search and vote once yourself in a private window, then reload Insights.
+
+## Help and FAQ both look selected in the menu on the FAQ page
+
+That is your theme, not KnowX. The EmDash blog template marks a menu link as current when the page address starts with the link's address, and `/docs/faq/` starts with `/docs/`. To change it, edit how your layout picks the current menu item.
