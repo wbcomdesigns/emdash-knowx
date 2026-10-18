@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { parseContactUrl } from "../src/settings";
-import { guestAddress, skipSearchTerm } from "../src/visitor";
+import { skipSearchTerm } from "../src/visitor";
+import { guestKey } from "../src/visitor-key";
 import { ana, guest, openSite, withDocs } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
@@ -30,7 +31,10 @@ describe("guests need a visitor address (#40)", () => {
 			ok: false,
 			error: { code: "GUEST_UNAVAILABLE" },
 		});
-		// "unknown" is what some proxies send: still no address.
+		// "unknown" is what some proxies send, and garbage cannot be parsed: both count as no address.
+		expect(await site.call("helpful", { id: ids[0], helpful: true }, guest("not-an-ip"))).toMatchObject({
+			error: { code: "GUEST_UNAVAILABLE" },
+		});
 		expect(await site.call("helpful", { id: ids[0], helpful: true }, guest("unknown"))).toMatchObject({
 			error: { code: "GUEST_UNAVAILABLE" },
 		});
@@ -65,9 +69,8 @@ describe("guests need a visitor address (#40)", () => {
 	});
 
 	it("two IPv6 addresses in one /64 are one guest", async () => {
-		expect(guestAddress("2001:db8:1:2::1")).toBe(guestAddress("2001:db8:1:2:ffff:ffff:ffff:fffe"));
-		expect(guestAddress("2001:db8:1:2::1")).not.toBe(guestAddress("2001:db8:1:3::1"));
-		expect(guestAddress("::ffff:198.51.100.4")).toBe("198.51.100.4");
+		expect(guestKey("2001:db8:1:2::1")).toBe(guestKey("2001:db8:1:2:ffff:ffff:ffff:fffe"));
+		expect(guestKey("2001:db8:1:2::1")).not.toBe(guestKey("2001:db8:1:3::1"));
 		const site = await openSite();
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
@@ -124,45 +127,70 @@ describe("search log (#41)", () => {
 		expect(card).toContain("1 search found nothing this week");
 	});
 
-	it("keeps at most the cap: the terms searched longest ago go first", async () => {
+	it("trims stale terms first, then the least searched, oldest of them first", async () => {
 		const { trimSearchLog } = await import("../src/public");
-		const rows = new Map<string, { lastAt: string }>();
-		for (let i = 0; i < 12; i += 1) rows.set(`term ${i}`, { lastAt: `2026-10-${String(i + 1).padStart(2, "0")}T00:00:00.000Z` });
+		const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+		const rows = new Map<string, { count: number; lastAt: string }>();
+		rows.set("stale busy", { count: 50, lastAt: day(60) });
+		for (let i = 0; i < 3; i += 1) rows.set(`one-off ${i}`, { count: 1, lastAt: day(3 - i) });
+		for (let i = 0; i < 8; i += 1) rows.set(`recent real ${i}`, { count: 5, lastAt: day(1) });
 		const searches = {
 			count: async () => rows.size,
-			query: async ({ limit }: { limit: number }) => ({
-				items: [...rows.entries()].sort((a, b) => a[1].lastAt.localeCompare(b[1].lastAt)).slice(0, limit).map(([id, data]) => ({ id, data })),
+			query: async ({ limit, orderBy }: { limit: number; orderBy: Record<string, string> }) => ({
+				items: [...rows.entries()]
+					.sort((x, y) => (orderBy.count ? x[1].count - y[1].count : x[1].lastAt.localeCompare(y[1].lastAt)))
+					.slice(0, limit)
+					.map(([id, data]) => ({ id, data })),
 			}),
 			deleteMany: async (ids: string[]) => ids.filter((id) => rows.delete(id)).length,
 		};
-		await trimSearchLog({ storage: { searches } } as never, 10);
-		expect(rows.size).toBe(10);
-		expect(rows.has("term 0")).toBe(false);
-		expect(rows.has("term 1")).toBe(false);
-		expect(rows.has("term 11")).toBe(true);
+		await trimSearchLog({ storage: { searches } } as never, 9);
+		expect(rows.size).toBe(9);
+		// The stale busy term went first, then the two oldest one-off terms. Recent real terms stayed.
+		expect(rows.has("stale busy")).toBe(false);
+		expect([...rows.keys()].filter((id) => id.startsWith("one-off"))).toEqual(["one-off 2"]);
+		expect([...rows.keys()].filter((id) => id.startsWith("recent real"))).toHaveLength(8);
 	});
 
-	it("a new term runs the trim on a real site", async () => {
+	it("a log full of old busy terms still takes new terms", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
+		await withDocs(site.rt);
 		const { SEARCH_LOG_CAP } = await import("../src/public");
 		for (let i = 0; i < SEARCH_LOG_CAP; i += 1) {
-			await site.rt.fixtures.plugin.storage("searches", `term ${i}`, {
-				term: `term ${i}`,
-				count: 3,
-				empty: 0,
-				found: true,
-				lastAt: i === 0 ? "2020-01-01T00:00:00.000Z" : "2026-10-01T00:00:00.000Z",
-			});
+			await site.rt.fixtures.plugin.storage("searches", `old ${i}`, { term: `old ${i}`, count: 40, empty: 0, found: true, lastAt: "2025-01-01T00:00:00.000Z" });
 		}
-		await site.call("log_search", { q: "brand new", found: 1 }, guest("198.51.100.40"));
-		// "term 0" was the oldest and was dropped: logging it again starts it at 1, not 4.
-		await site.call("log_search", { q: "term 0", found: 1 }, guest("198.51.100.41"));
+		await site.call("log_search", { q: "brand new term", found: 0 }, guest("198.51.100.50"));
 		const page = await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" });
 		const blocks = (page as { blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }> }).blocks;
-		const top = blocks.find((block) => block.page_action_id === "top_page")?.rows || [];
-		expect(top.find((row) => row.term === "term 0")).toBeUndefined();
-	}, 180_000);
+		expect(blocks.find((block) => block.page_action_id === "empty_page")?.rows).toEqual([{ term: "brand new term", times: "1" }]);
+	}, 240_000);
+
+	it("a flood of made-up one-off terms never pushes out recent terms with real traffic", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withDocs(site.rt);
+		const { SEARCH_LOG_CAP } = await import("../src/public");
+		const recent = new Date(Date.now() - 86_400_000).toISOString();
+		for (let i = 0; i < SEARCH_LOG_CAP; i += 1) {
+			await site.rt.fixtures.plugin.storage("searches", `real ${i}`, { term: `real ${i}`, count: 3, empty: 0, found: true, lastAt: recent });
+		}
+		// Junk from many addresses, so the per-guest limit does not stop it first.
+		for (let i = 0; i < 30; i += 1) {
+			await site.call("log_search", { q: `junk term ${i}`, found: 0 }, guest(`198.51.100.${i + 1}`));
+		}
+		const load = async () =>
+			((await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" })) as {
+				blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }>;
+			}).blocks;
+		// Every junk term was dropped on arrival: each real term has more traffic.
+		expect((await load()).find((block) => block.page_action_id === "empty_page")?.rows).toBeUndefined();
+		// A real term was never evicted: logging it again adds to its count (3 + 1).
+		await site.call("log_search", { q: "real 0", found: 1 }, guest("203.0.113.200"));
+		const top = (await load()).find((block) => block.page_action_id === "top_page")?.rows || [];
+		expect(top.find((row) => row.term === "real 0")?.times).toBe("4");
+		expect(top.filter((row) => row.term.startsWith("junk"))).toEqual([]);
+	}, 240_000);
 
 	it("never stores a phone number in any spacing, or an email address", () => {
 		expect(skipSearchTerm("555-123-4567")).toBe(true);

@@ -117,22 +117,32 @@ export function lastEmptyAt(row: Record<string, unknown>): string {
 }
 
 /**
- * Keep the log at SEARCH_LOG_CAP rows. The least searched terms go first, the oldest of them
- * first, so a flood of made-up one-off terms only pushes out other one-off terms and never a term
- * with real traffic. ponytail: once the log is full of repeated terms, a brand-new term is dropped
- * on arrival until something else ages out; raise the cap if that ever matters.
+ * Keep the log at SEARCH_LOG_CAP rows. First go terms nobody searched in the last EMPTY_WINDOW_MS,
+ * oldest first, so old busy terms cannot hold the log for good. Then the least searched terms, the
+ * oldest of them first, so a flood of made-up one-off terms only pushes out other one-off terms and
+ * never a term with recent real traffic.
  */
 export async function trimSearchLog(ctx: PluginContext, cap = SEARCH_LOG_CAP): Promise<void> {
 	const total = await ctx.storage.searches.count();
 	if (total <= cap) return;
 	const excess = Math.min(100, total - cap);
-	// Read a wider slice of the least searched rows, then order by count and age here.
-	const low = await ctx.storage.searches.query({ limit: Math.min(500, excess + 200), orderBy: { count: "asc" } });
-	const victims = low.items
-		.map((item) => ({ id: item.id, row: asRecord(item.data) }))
-		.sort((a, b) => (asNumber(a.row.count) ?? 0) - (asNumber(b.row.count) ?? 0) || asString(a.row.lastAt).localeCompare(asString(b.row.lastAt)))
-		.slice(0, excess)
-		.map((item) => item.id);
+	const since = new Date(Date.now() - EMPTY_WINDOW_MS).toISOString();
+	const rowsOf = (result: { items: Array<{ id: string; data: unknown }> }) =>
+		result.items.map((item) => ({ id: item.id, row: asRecord(item.data) }));
+	const oldest = rowsOf(await ctx.storage.searches.query({ limit: excess, orderBy: { lastAt: "asc" } }));
+	const victims = oldest.filter(({ row }) => asString(row.lastAt) < since).map(({ id }) => id);
+	if (victims.length < excess) {
+		// Read a wider slice of the least searched rows, then order by count and age here.
+		const low = rowsOf(await ctx.storage.searches.query({ limit: Math.min(500, excess + 200), orderBy: { count: "asc" } }));
+		const taken = new Set(victims);
+		victims.push(
+			...low
+				.filter(({ id }) => !taken.has(id))
+				.sort((x, y) => (asNumber(x.row.count) ?? 0) - (asNumber(y.row.count) ?? 0) || asString(x.row.lastAt).localeCompare(asString(y.row.lastAt)))
+				.slice(0, excess - victims.length)
+				.map(({ id }) => id),
+		);
+	}
 	await ctx.storage.searches.deleteMany(victims);
 }
 

@@ -11,7 +11,7 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step.
 
-Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
+Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -25,6 +25,6 @@ Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
    It copies the kit and creates the content types.
 3. Restart the dev server.
 4. In Admin, Menus, add `/docs/` and `/docs/faq/`.
-5. Open KnowX, Insights and follow its first screen. Add articles in Content, Help articles.
+5. Open KnowX, Insights. Add articles in Content, Help articles.
 
-After every update, run step 2 again with the new tag. Full guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v0.1.5/docs/website/getting-started/install.md
+Run step 2 again after every update. Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v0.1.5/docs/website/getting-started/install.md
