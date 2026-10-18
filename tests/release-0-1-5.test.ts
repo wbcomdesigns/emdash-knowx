@@ -25,18 +25,18 @@ describe("guests need a visitor address (#40)", () => {
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
 		expect(await site.call("helpful", { id: ids[0], helpful: false, comment: "spam" }, noAddress)).toMatchObject({
 			ok: false,
-			error: { code: "GUEST_UNAVAILABLE" },
+			error: { code: "VALIDATION_ERROR", reason: "GUEST_UNAVAILABLE" },
 		});
 		expect(await site.call("log_search", { q: "invented term", found: 0 }, noAddress)).toMatchObject({
 			ok: false,
-			error: { code: "GUEST_UNAVAILABLE" },
+			error: { code: "VALIDATION_ERROR", reason: "GUEST_UNAVAILABLE" },
 		});
 		// "unknown" is what some proxies send, and garbage cannot be parsed: both count as no address.
 		expect(await site.call("helpful", { id: ids[0], helpful: true }, guest("not-an-ip"))).toMatchObject({
-			error: { code: "GUEST_UNAVAILABLE" },
+			error: { code: "VALIDATION_ERROR", reason: "GUEST_UNAVAILABLE" },
 		});
 		expect(await site.call("helpful", { id: ids[0], helpful: true }, guest("unknown"))).toMatchObject({
-			error: { code: "GUEST_UNAVAILABLE" },
+			error: { code: "VALIDATION_ERROR", reason: "GUEST_UNAVAILABLE" },
 		});
 		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ yes: 0, no: 0 });
 		const page = await insightsJson(site);

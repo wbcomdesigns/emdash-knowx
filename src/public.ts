@@ -36,9 +36,15 @@ export const SEARCH_LOG_CAP = 5000;
 /** How long a search with no results stays on the "Searches with no results" list. */
 export const EMPTY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * A guest write on a host that gives no usable visitor address. The code is one the 0.1.4 kit
+ * already turns into its vote message ("Your vote could not be saved"), so a site that updated
+ * the plugin before copying the new kit never shows a generic error; the 0.1.4 kit has no sign-in
+ * wording to reach. The 0.1.5 kit reads `reason` and shows the sign-in line.
+ */
 export const GUEST_UNAVAILABLE = {
 	ok: false,
-	error: { code: "GUEST_UNAVAILABLE", message: "Sign in to continue." },
+	error: { code: "VALIDATION_ERROR", reason: "GUEST_UNAVAILABLE", message: "Sign in to continue." },
 };
 
 /** Who is writing: a member (host-verified id) or a guest counted by the address EmDash gave. */

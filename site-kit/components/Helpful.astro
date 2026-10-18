@@ -155,7 +155,7 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 			let result = knownGuest() ? null : await api("knowx", "helpful_member", body);
 			if (!result || !result.ok) {
 				const code = result?.error?.code;
-				if (result && code !== "SIGN_IN_REQUIRED" && code !== "FAILED") {
+				if (result && code !== "SIGN_IN_REQUIRED" && code !== "FAILED" && code !== "NOT_FOUND") {
 					// A real refusal from the member route (rate limit, missing article): show it.
 				} else {
 					if (code === "SIGN_IN_REQUIRED") rememberGuest();
@@ -163,7 +163,8 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 				}
 			}
 			status.hidden = false;
-			if (SIGN_IN_CODES.has(result.error?.code || "")) {
+			const why = (result.error as { reason?: string } | undefined)?.reason || result.error?.code || "";
+			if (SIGN_IN_CODES.has(why)) {
 				askToSignIn();
 				return;
 			}
