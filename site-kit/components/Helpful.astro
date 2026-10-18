@@ -173,6 +173,8 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 				return;
 			}
 			status.dataset.tone = "success";
+			// The vote counted, so this reader may vote here: the members-only hint has done its job.
+			if (signIn) signIn.hidden = true;
 			// An older strings file may not have the newer phrases yet.
 			status.textContent = (comment ? copy.commentThanks || copy.thanks : copy.thanks) || "";
 			markChoice(root, helpful);
