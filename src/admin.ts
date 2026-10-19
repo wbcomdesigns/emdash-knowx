@@ -89,7 +89,7 @@ function guestBlocks(ctx: PluginContext, guestWrites: boolean): Array<Record<str
 			type: "banner",
 			title: "Guests cannot vote on this host",
 			description:
-				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. A guest who votes on Was this helpful is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders inside emdash({ ... }) in astro.config.mjs.",
+				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. Guests see Yes and No on Was this helpful as unavailable, with a sign-in link, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders inside emdash({ ... }) in astro.config.mjs.",
 			variant: "default",
 		},
 		{
