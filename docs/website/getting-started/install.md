@@ -84,7 +84,7 @@ goes in the top block, and `<DocSearch />` on the line after `<PortableText valu
 
 Open `/docs/` on your site. You see the search box and your topics. If you see a 404, the kit pages were not copied; see [Troubleshooting](../troubleshooting/troubleshooting.md).
 
-Expected in the browser console: each time a guest votes on **Was this helpful**, one `401` from the member vote route. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest. On a plugin installed from local files (not the registry), the first call of each visit shows one expected 404 while the kit finds the plugin's address.
+Expected in the browser console: each time a guest votes on **Was this helpful**, one `401` from the member vote route. On a host that gives no visitor address, that `401` comes once when an article opens instead: the kit checks whether the reader is signed in, then shows a guest Yes and No as unavailable with the sign-in link. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest. On a plugin installed from local files (not the registry), the first call of each visit shows one expected 404 while the kit finds the plugin's address.
 
 ## Guests and visitor addresses
 

@@ -88,6 +88,15 @@ describe("guests need a visitor address (#40)", () => {
 		expect(await site.call("helpful_member", { id: ids[0], helpful: true }, noAddress)).toMatchObject({ error: { code: "SIGN_IN_REQUIRED" } });
 	});
 
+	it("the kit's member check stores nothing: a member gets VALIDATION_ERROR, a guest SIGN_IN_REQUIRED (#45)", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		expect(await site.call("helpful_member", {}, asMember())).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+		expect(await site.call("helpful_member", {}, noAddress)).toMatchObject({ ok: false, error: { code: "SIGN_IN_REQUIRED" } });
+		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ yes: 0, no: 0 });
+	});
+
 	it("Insights says plainly when guest writes are off on this host", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
@@ -324,6 +333,10 @@ describe("first admin screen (#43, starter #2)", () => {
 		expect(page).toContain("Copy it from the install guide on a phone");
 		expect(page).not.toContain("/tmp/emdash-knowx");
 		expect(page).toContain("/docs/faq/");
+		// #46: the addresses are wrapping text, not a fields block that clips at 390.
+		const blocks = JSON.parse(page).blocks as Array<{ type: string; text?: string }>;
+		expect(blocks.some((block) => block.type === "fields")).toBe(false);
+		expect(blocks.find((block) => block.type === "section" && block.text?.includes("/docs/category/<topic>/"))).toBeTruthy();
 		expect(page).not.toContain("blob/main");
 		expect(page).toContain("Content, Help articles");
 		expect(page).toContain("Content, FAQs");

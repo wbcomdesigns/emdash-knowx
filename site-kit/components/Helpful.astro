@@ -29,7 +29,6 @@ const copy = jsonForScript({
 	stillBody: kx.stillNeedBody,
 	stillButton: kx.stillNeedButton,
 	question: kx.helpfulQuestion,
-	membersOnly: kx.helpfulMembersOnly,
 	signIn: kx.helpfulSignIn,
 });
 const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pathname)}`;
@@ -110,9 +109,24 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 		const membersOnly = health.ok === true && health.guestWrites === false;
 		const signIn = root.querySelector<HTMLElement>("[data-kx-signin]");
 		const signInText = root.querySelector<HTMLElement>("[data-kx-signin-text]");
-		if (membersOnly && signIn) {
-			if (signInText && copy.membersOnly) signInText.textContent = copy.membersOnly;
-			signIn.hidden = false;
+		// On such a host, ask once whether this reader is a member. The member vote route answers a
+		// guest with 401 (expected, documented) and a member with VALIDATION_ERROR for the empty
+		// body, so nothing is stored. A guest then gets Yes and No marked unavailable (out of the tab
+		// order) and the sign-in line as the action; a member votes as usual.
+		let guestBlocked = false;
+		if (membersOnly) {
+			const probe = await api("knowx", "helpful_member", {});
+			guestBlocked = probe.error?.code === "SIGN_IN_REQUIRED";
+		}
+		if (guestBlocked) {
+			root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]").forEach((button) => {
+				button.disabled = true;
+				button.setAttribute("aria-disabled", "true");
+			});
+			if (signIn) {
+				if (signInText && copy.signIn) signInText.textContent = copy.signIn;
+				signIn.hidden = false;
+			}
 		}
 		const askToSignIn = () => {
 			const buttons = root.querySelector<HTMLElement>("[data-kx-buttons]");
@@ -130,7 +144,7 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 		await tally(root, id, copy.tally || "");
 
 		const vote = async (helpful: boolean, comment = "") => {
-			if (!status) return;
+			if (!status || guestBlocked) return;
 			const body = { id, helpful, comment, vid: visitorId() };
 			// A signed-in member votes only through the member route (one vote per member, never one by
 			// address as well). It is tried on every click, so a reader who signs in during the visit

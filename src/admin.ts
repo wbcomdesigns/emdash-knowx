@@ -68,15 +68,10 @@ export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string
 			code: kitCommand(tag),
 		},
 		{ type: "actions", elements: [{ ...guide, label: "Copy it from the install guide on a phone" }] },
+		// Plain text that wraps, not a fields block: a fields value is clipped at 390 (#46).
 		{
-			type: "fields",
-			fields: [
-				{ label: "Help home", value: "/docs/" },
-				{ label: "One article", value: "/docs/<article>/" },
-				{ label: "Topic", value: "/docs/category/<topic>/" },
-				{ label: "Search results", value: "/docs/search" },
-				{ label: "FAQ page", value: "/docs/faq/" },
-			],
+			type: "section",
+			text: "Visitor addresses the kit adds: /docs/ (help home), /docs/<article>/ (one article), /docs/category/<topic>/ (a topic), /docs/search (search results), /docs/faq/ (the FAQ page).",
 		},
 		{ type: "context", text: "Then add your first help article in Content, Help articles, and your first question in Content, FAQs." },
 		{
