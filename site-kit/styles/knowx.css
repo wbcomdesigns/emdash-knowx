@@ -521,3 +521,9 @@
 		min-height: 0;
 	}
 }
+
+/* A guest who cannot vote on this host: Yes and No read as off, the sign-in line is the next step. */
+[data-kx-vote][aria-disabled="true"] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}

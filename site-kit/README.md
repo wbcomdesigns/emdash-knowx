@@ -72,7 +72,7 @@ Guests can search, read articles, vote helpful (on a host that gives a visitor a
 - `/docs/category/{slug}/` articles in that topic
 - Admin, KnowX: Insights and Settings, plus a card on the EmDash dashboard
 
-Expected in the browser console: each time a guest votes on Was this helpful, one `401` from the member vote route. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest.
+Expected in the browser console: each time a guest votes on Was this helpful, one `401` from the member vote route. On a host that gives no visitor address, that `401` comes once when an article opens instead: the kit checks whether the reader is signed in, then shows a guest Yes and No as unavailable with the sign-in link. A signed-in member's vote counts only through that route, so the kit tries it first; a guest then votes through the guest route, or sees the sign-in link on a host with no visitor address. Nothing else from KnowX answers 401 to a guest.
 
 ## Working on this plugin
 

@@ -68,15 +68,10 @@ export async function kitBlocks(ctx: PluginContext): Promise<Array<Record<string
 			code: kitCommand(tag),
 		},
 		{ type: "actions", elements: [{ ...guide, label: "Copy it from the install guide on a phone" }] },
+		// Plain text that wraps, not a fields block: a fields value is clipped at 390 (#46).
 		{
-			type: "fields",
-			fields: [
-				{ label: "Help home", value: "/docs/" },
-				{ label: "One article", value: "/docs/<article>/" },
-				{ label: "Topic", value: "/docs/category/<topic>/" },
-				{ label: "Search results", value: "/docs/search" },
-				{ label: "FAQ page", value: "/docs/faq/" },
-			],
+			type: "section",
+			text: "Visitor addresses the kit adds: /docs/ (help home), /docs/<article>/ (one article), /docs/category/<topic>/ (a topic), /docs/search (search results), /docs/faq/ (the FAQ page).",
 		},
 		{ type: "context", text: "Then add your first help article in Content, Help articles, and your first question in Content, FAQs." },
 		{
@@ -94,7 +89,7 @@ function guestBlocks(ctx: PluginContext, guestWrites: boolean): Array<Record<str
 			type: "banner",
 			title: "Guests cannot vote on this host",
 			description:
-				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. A guest who votes on Was this helpful is asked to sign in, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders inside emdash({ ... }) in astro.config.mjs.",
+				"This host does not tell EmDash the visitor's address, so KnowX cannot limit guests. Guests see Yes and No on Was this helpful as unavailable, with a sign-in link, and searches are not counted on Insights. Signed-in members still vote. To let guests vote, run the site on Cloudflare or set trustedProxyHeaders inside emdash({ ... }) in astro.config.mjs.",
 			variant: "default",
 		},
 		{
