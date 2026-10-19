@@ -4,11 +4,11 @@
 
 ## `/docs/` shows a 404
 
-The site kit pages are not in the site. Copy them from the kit (see [Install](../getting-started/install.md)), then rebuild.
+The site kit pages are not in the site. Run the two kit lines from [Install](../getting-started/install.md), step 2, then stop the dev server and start it again.
 
 ## The help home says help articles are not set up
 
-The **Help articles** collection does not exist, or has another address. Create it with `site-kit/seed/collection.mjs` or by hand (see [Install](../getting-started/install.md#step-2-create-the-help-collections)).
+The **Help articles** content type does not exist, or has another address. Run `npx emdash seed .emdash/knowx-seed.json --no-content` from the site root with Node 22.16 or later (`add-to-site.sh` writes that file), or create it by hand (see [Install](../getting-started/install.md#what-each-step-does-for-knowx)).
 
 ## Search finds nothing
 
@@ -19,6 +19,10 @@ The **Help articles** collection does not exist, or has another address. Create 
 ## Votes or the search log do not save after an update
 
 Copy the site kit again from the version you installed. An older kit may not reach a newer plugin.
+
+## Guests see "Sign in to say whether this helped"
+
+The host does not give EmDash the visitor's address, so KnowX cannot limit guests and asks them to sign in. Guest searches are not counted on Insights either. Run the site on Cloudflare, or set `trustedProxyHeaders` (see [Guests and visitor addresses](../getting-started/install.md#guests-and-visitor-addresses)).
 
 ## The "Still need help?" button does not show
 
@@ -31,3 +35,7 @@ Check `src/layouts/KnowXLayout.astro` points at your site's layout. See [Wording
 ## Insights is empty
 
 Insights fills as visitors search and vote. On a new site, search and vote once yourself in a private window, then reload Insights.
+
+## Help and FAQ both look selected in the menu on the FAQ page
+
+That is your theme, not KnowX. The EmDash blog template marks a menu link as current when the page address starts with the link's address, and `/docs/faq/` starts with `/docs/`. To change it, edit how your layout picks the current menu item.

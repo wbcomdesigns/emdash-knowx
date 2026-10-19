@@ -13,8 +13,8 @@ json "$API/health" | grep -q '"ok":true' || fail "health"
 ok "health"
 
 # Member and admin routes must refuse guests. List every such route here.
-for route in ${GUEST_REFUSED_ROUTES:-}; do
-	[[ "$(status "$API/$route")" == "401" ]] || fail "guest refused on $route"
+for route in ${GUEST_REFUSED_ROUTES:-helpful_member admin}; do
+	[[ "$(status -X POST -H 'Content-Type: application/json' -d '{}' "$API/$route")" == "401" ]] || fail "guest refused on $route"
 done
 ok "guests refused on member and admin routes"
 
@@ -27,34 +27,39 @@ ok "admin pages load"
 
 # plugin-specific checks go below this line
 HEALTH="$(json "$API/health")"
-echo "$HEALTH" | grep -q '"collectionExists":true' || fail "docs collection exists"
-echo "$HEALTH" | grep -q '"faqCollectionExists":true' || fail "faq collection exists"
-echo "$HEALTH" | grep -q '"articleCount":[1-9]' || fail "published article count"
+grep -q '"collectionExists":true' <<<"$HEALTH" || fail "docs collection exists"
+grep -q '"faqCollectionExists":true' <<<"$HEALTH" || fail "faq collection exists"
+grep -q '"articleCount":[1-9]' <<<"$HEALTH" || fail "published article count"
 ok "collections and article count"
 echo "$HEALTH" >/dev/null
 PRODUCTS="$(json "$API/products")"
-echo "$PRODUCTS" | grep -q '"productLayer":true' || fail "product layer for three categories"
-echo "$PRODUCTS" | grep -q 'Getting started' || fail "product names"
+grep -q '"productLayer":true' <<<"$PRODUCTS" || fail "product layer for three categories"
+grep -q 'Getting started' <<<"$PRODUCTS" || fail "product names"
 ok "products"
 
 CONFIG="$(json "$API/config")"
-echo "$CONFIG" | grep -q '"ok":true' || fail "config"
-echo "$CONFIG" | grep -q 'searchCollections' || fail "config search collections"
+grep -q '"ok":true' <<<"$CONFIG" || fail "config"
+grep -q 'searchCollections' <<<"$CONFIG" || fail "config search collections"
 ok "config"
 
-LOG="$(json -X POST -H 'Content-Type: application/json' -d '{"q":"welcome","found":1}' "$API/log_search")"
-echo "$LOG" | grep -q '"ok":true' || fail "log_search"
+# The lab trusts X-Forwarded-For (wire-lab.mjs), so a guest with that header has an address.
+GUEST=(-H "X-Forwarded-For: 203.0.113.7")
+NOIP="$(json -X POST -H 'Content-Type: application/json' -d '{"q":"welcome","found":1}' "$API/log_search")"
+grep -q 'GUEST_UNAVAILABLE' <<<"$NOIP" || fail "guest search with no visitor address is refused"
+ok "guest writes refused with no visitor address"
+LOG="$(json "${GUEST[@]}" -X POST -H 'Content-Type: application/json' -d '{"q":"welcome","found":1}' "$API/log_search")"
+grep -q '"ok":true' <<<"$LOG" || fail "log_search"
 ok "log_search"
 
 DOC_ID="$(curl -sf "$BASE/docs/welcome-to-the-help-center" | sed -n 's/.*data-kx-helpful data-id="\([^"]*\)".*/\1/p' | head -n 1)"
 [[ -n "$DOC_ID" ]] || fail "article page is missing the helpful widget"
-HELPFUL="$(json -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$DOC_ID\",\"helpful\":false,\"comment\":\"Need more steps\",\"vid\":\"prove-1\"}" "$API/helpful")"
-echo "$HELPFUL" | grep -q '"ok":true' || fail "helpful"
-echo "$HELPFUL" | grep -q '"no":' || fail "helpful tally"
+HELPFUL="$(json "${GUEST[@]}" -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$DOC_ID\",\"helpful\":false,\"comment\":\"Need more steps\"}" "$API/helpful")"
+grep -q '"ok":true' <<<"$HELPFUL" || fail "helpful"
+grep -q '"no":' <<<"$HELPFUL" || fail "helpful tally"
 ok "helpful"
 INSIGHTS="$(json -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"page_load","page":"/insights"}' "$API/admin")"
-echo "$INSIGHTS" | grep -q 'Need more steps' || fail "insights comment"
-echo "$INSIGHTS" | grep -qi 'Welcome' || fail "insights article name"
+grep -q 'Need more steps' <<<"$INSIGHTS" || fail "insights comment"
+grep -qi 'Welcome' <<<"$INSIGHTS" || fail "insights article name"
 ok "insights after a vote and a search"
 
 for path in /docs /docs/search /docs/faq /docs/category/getting-started /docs/category/getting-started/first-week /docs/welcome-to-the-help-center; do
@@ -68,15 +73,15 @@ MISSING="$(curl -s -o /dev/null -w "%{http_code}" "$BASE/docs/this-article-is-no
 ok "missing article is 404"
 
 SEARCH_PAGE="$(curl -sf "$BASE/docs/search?q=welcome")"
-echo "$SEARCH_PAGE" | grep -qi "Welcome" || fail "search page finds a help article"
-echo "$SEARCH_PAGE" | grep -q "Help article" || fail "search page labels a help article"
-echo "$SEARCH_PAGE" | grep -q "How this help center is organised" || fail "search hit shows the article excerpt, not a repeated title"
+grep -qi "Welcome" <<<"$SEARCH_PAGE" || fail "search page finds a help article"
+grep -q "Help article" <<<"$SEARCH_PAGE" || fail "search page labels a help article"
+grep -q "How this help center is organised" <<<"$SEARCH_PAGE" || fail "search hit shows the article excerpt, not a repeated title"
 ok "search page finds and labels help articles"
 
 SAVE_SEARCH="$(json -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{"type":"form_submit","action_id":"save_search","page":"/settings","values":{"search_collections":["docs","posts"]}}' "$API/admin")"
-echo "$SAVE_SEARCH" | grep -q '"type":"success"' || fail "save search coverage"
+grep -q '"type":"success"' <<<"$SAVE_SEARCH" || fail "save search coverage"
 COVERED="$(json "$API/config")"
-echo "$COVERED" | grep -q '"posts"' || fail "config includes posts after save"
+grep -q '"posts"' <<<"$COVERED" || fail "config includes posts after save"
 ok "search coverage includes posts when listed"
 
 echo "All checks passed for $SLUG"

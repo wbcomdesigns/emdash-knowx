@@ -15,4 +15,4 @@ KnowX turns an EmDash site into a help center. Visitors search for an answer, br
 
 KnowX is the engine: routes, storage and the admin screens. An EmDash plugin cannot add pages to your site, so the public pages ship as a site kit you copy in once. See Installation.
 
-Every visitor-facing feature works for guests. Signing in changes nothing.
+Guests search, read, and vote when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders`). Elsewhere guests see a sign-in link to vote, and members vote as usual.

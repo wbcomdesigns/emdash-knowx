@@ -2,7 +2,6 @@ import { callPluginRoute } from "./wbcom-kit";
 import { kx, kindLabel } from "./knowx-strings";
 
 export const HELP_PATH = "/docs";
-export const VID_COOKIE = "knowx_vid";
 export const PLUGIN = "knowx";
 
 export type KnowxConfig = {
@@ -173,8 +172,17 @@ export const SEARCH_ROUTES: Record<string, string> = {
 	pages: "/pages/:slug",
 };
 
-export function visitorIdFromCookie(raw: string | undefined): string {
-	return raw && raw.length < 80 ? raw : crypto.randomUUID();
+/**
+ * A per-browser id (browser only). Still sent with votes and search logs so a site whose engine is
+ * one version older (0.1.4, which keys guests by it when the host gives no address) keeps one vote
+ * per browser while its kit is newer. 0.1.5 ignores it.
+ */
+export function visitorId(): string {
+	const found = document.cookie.match(/(?:^|; )knowx_vid=([^;]+)/);
+	if (found?.[1]) return decodeURIComponent(found[1]);
+	const id = crypto.randomUUID();
+	document.cookie = `knowx_vid=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+	return id;
 }
 
 export { kx, kindLabel };

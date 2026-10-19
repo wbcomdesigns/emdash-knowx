@@ -2,7 +2,7 @@
 import { getEmDashCollection, search, getSiteSettings } from "emdash";
 import StillNeedHelp from "../../components/StillNeedHelp.astro";
 import Layout from "../../layouts/KnowXLayout.astro";
-import { HELP_PATH, loadConfig, pluginJson, resultHref, resultKind, resultSnippet, SEARCH_ROUTES, visitorIdFromCookie, VID_COOKIE } from "../../lib/knowx";
+import { HELP_PATH, jsonForScript, loadConfig, resultHref, resultKind, resultSnippet, SEARCH_ROUTES } from "../../lib/knowx";
 import { kx } from "../../lib/knowx-strings";
 import "../../styles/wbcom-base.css";
 import "../../styles/knowx.css";
@@ -33,19 +33,13 @@ if (q) {
 	} catch {
 		failed = true;
 	}
-	const vid = visitorIdFromCookie(Astro.cookies.get(VID_COOKIE)?.value);
-	if (!Astro.cookies.get(VID_COOKIE)?.value) {
-		Astro.cookies.set(VID_COOKIE, vid, { path: "/", maxAge: 31536000, sameSite: "lax" });
-	}
-	await pluginJson(Astro.locals, "log_search", {
-		q,
-		found: items.length,
-		website: honeypot,
-		vid,
-	}).catch(() => null);
 }
 
 const title = q ? kx.searchResultsFor(q) : kx.searchTitle;
+// The search is counted from the browser, so the request carries the visitor's address: it is only
+// counted when the host gives EmDash that address (owner decision 2026-10-16). The markup is the
+// same for every visitor, so the page can be cached.
+const log = q && !failed && !honeypot ? jsonForScript({ q, found: items.length }) : "";
 ---
 
 <Layout title={title} description={kx.homeLead}>
@@ -92,4 +86,22 @@ const title = q ? kx.searchResultsFor(q) : kx.searchTitle;
 
 		{q && !items.length && !failed ? <StillNeedHelp href={config.contactUrl} /> : null}
 	</div>
+	{log ? <script type="application/json" data-kx-search-log set:html={log} /> : null}
 </Layout>
+
+<script>
+	import { api } from "../../lib/wbcom-kit";
+	import { visitorId } from "../../lib/knowx";
+
+	const box = document.querySelector("[data-kx-search-log]");
+	if (box) {
+		try {
+			const { q, found } = JSON.parse(box.textContent || "{}");
+			// Fire and forget: a refused or failed log never changes what the visitor sees. With no
+			// visitor address on this host the route refuses and nothing is counted.
+			void api("knowx", "log_search", { q, found, vid: visitorId() });
+		} catch {
+			/* nothing to log */
+		}
+	}
+</script>

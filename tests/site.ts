@@ -104,3 +104,9 @@ export async function withPosts(rt: Awaited<ReturnType<typeof openSite>>["rt"]) 
 	const draft = await rt.fixtures.content("posts", { data: { title: "Secret Draft" }, slug: "secret-draft" } as never);
 	return { live: live.id, draft: draft.id };
 }
+
+/** A guest request from this visitor address (what EmDash fills on Cloudflare or with trustedProxyHeaders). */
+export const guest = (ip: string | null) => ({
+	method: "POST",
+	meta: { ip, userAgent: null, referer: null, geo: null },
+});

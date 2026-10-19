@@ -10,7 +10,7 @@ You sell one product or service, and customers keep asking the same questions.
 
 1. Open **Help categories** and add a few topics, for example **Getting started** and **Account and billing**. Give each a short description, because it shows on the topic card.
 2. Open **Help articles**, choose **Add New**, write a **Title**, the **Content** and a short **Excerpt**, pick a topic and publish.
-3. In **Menus**, add **Help** linking to `/docs/`.
+3. In Admin, **Menus**, add **Help** linking to `/docs/`.
 
 Visitors open `/docs/` and see a search box, your topic cards and a list of articles. Each article has a table of contents when it has three or more headings, previous and next links, and the last updated date. See [Help home, topics and articles](../features/help-pages.md).
 
@@ -29,7 +29,7 @@ With more than one top-level category, the help home shows one card per product,
 You want short answers to the questions people ask most, in one place.
 
 1. Open **FAQs**, choose **Add New**, write the **Question** and the **Answer**, and publish.
-2. In **Menus**, add **FAQ** linking to `/docs/faq/`.
+2. In Admin, **Menus**, add **FAQ** linking to `/docs/faq/`.
 
 Visitors see every published FAQ, sorted by question from A to Z. Each question opens to show its answer. The first answer is open when the page loads. The page also carries question-and-answer data, so search engines can show your FAQs in results. See [The FAQ page](../features/faq-page.md).
 

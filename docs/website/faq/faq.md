@@ -4,11 +4,11 @@
 
 ## Why is `/docs/` a 404 after install?
 
-The plugin cannot create pages. Copy the site kit into your site and reload. See [Install](../getting-started/install.md).
+The plugin cannot create pages. Run the two kit lines from [Install](../getting-started/install.md), step 2, then restart the dev server. KnowX, Insights shows the same lines for the version you installed.
 
 ## Do visitors need an account?
 
-No. Search, reading, voting and the contact button all work for guests.
+Not to search, read or use the contact button. Voting **Was this helpful** works for guests when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` in `astro.config.mjs`). On other hosts guests see a sign-in link instead, and signed-in members vote. See [Guests and visitor addresses](../getting-started/install.md#guests-and-visitor-addresses).
 
 ## Can search include my blog posts or pages?
 

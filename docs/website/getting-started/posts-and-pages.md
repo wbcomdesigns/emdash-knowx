@@ -18,7 +18,7 @@ Your posts stay at `/posts/<slug>` and your pages at `/pages/<slug>`. Nothing ab
 
 ## Add the pages to your menu
 
-1. In admin, open **Menus**.
+1. In the admin, open **Menus**.
 2. Add a link named **Help** that points to `/docs/`.
 3. Add a link named **FAQ** that points to `/docs/faq/`.
 
@@ -38,7 +38,7 @@ Help search can look through your posts and pages too.
 
 Post results link to `/posts/<slug>`. Each result says what kind of content it is.
 
-Page results link to `/<slug>`. The blog template keeps pages at `/pages/<slug>`, so those links will not open there. Tick **Pages** only if your pages live at `/<slug>`.
+Page results link to `/pages/<slug>`, where the blog template serves pages.
 
 ## Put the help search box on a post or page
 
@@ -50,7 +50,7 @@ In `src/pages/posts/[slug].astro` (or `src/pages/pages/[slug].astro`), add the i
 import DocSearch from "../../components/DocSearch.astro";
 ```
 
-Then place the tag where you want the box:
+Then place the tag where you want the box. Under the post text is a good place: on the line after `<PortableText value={post.data.content} />`. Outside the theme's frame it runs the full width of the window.
 
 ```astro
 <DocSearch />

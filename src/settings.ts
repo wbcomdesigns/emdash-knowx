@@ -19,9 +19,13 @@ export type CollectionChoice = {
 };
 
 export function parseContactUrl(raw: unknown): { ok: true; value: string } | { ok: false } {
+	// Control characters (tab, CR, LF and the rest) are refused before trimming: a browser drops
+	// them from an address, so "/\t/evil.example" would become "//evil.example".
+	if (typeof raw === "string" && /[\x00-\x1f\x7f]/.test(raw)) return { ok: false };
 	const value = asString(raw);
 	if (!value) return { ok: true, value: "" };
-	if (/^(javascript|data|vbscript):/i.test(value) || value.startsWith("//")) return { ok: false };
+	// "/\evil.example" and "//evil.example" both leave the site in a browser. No address needs a backslash.
+	if (/^(javascript|data|vbscript):/i.test(value) || value.startsWith("//") || value.includes("\\")) return { ok: false };
 	if (/^mailto:[^\s@]+@[^\s@]+$/i.test(value)) return { ok: true, value };
 	if (/^https?:\/\//i.test(value)) {
 		try {
@@ -39,10 +43,15 @@ export function parseContactUrl(raw: unknown): { ok: true; value: string } | { o
 export async function loadSettings(ctx: PluginContext): Promise<KnowxSettings> {
 	const collection = await articleCollection(ctx);
 	const chosen = asStringArray(await ctx.settings.get<string>("search_collections"));
+	const contactRaw = await ctx.settings.get<string>("contact_url");
 	return {
 		collection,
 		askComment: (await ctx.settings.get<boolean>("ask_comment")) !== false,
-		contactUrl: asString(await ctx.settings.get<string>("contact_url")),
+		// Checked again on read: a link saved before a stricter check (0.1.4) is never served.
+		contactUrl: (() => {
+			const parsed = parseContactUrl(contactRaw);
+			return parsed.ok ? parsed.value : "";
+		})(),
 		searchCollections: chosen.length ? chosen : [collection],
 	};
 }

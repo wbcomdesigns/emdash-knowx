@@ -15,7 +15,7 @@ KnowX turns your EmDash site into a help center. Visitors search for an answer, 
 - **Was this helpful?** Yes or No on every article, with an optional short comment after a No.
 - **Still need help?** A contact button after an empty search and after a No vote, when you set a contact link.
 
-Everything works for guests. Signing in changes nothing.
+Guests search, read, and vote when the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders`). Elsewhere guests see a sign-in link to vote, and members vote as usual.
 
 ## What you get
 

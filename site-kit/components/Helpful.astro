@@ -1,7 +1,9 @@
 ---
 /**
- * Was-this-helpful vote. Markup is the same for every visitor so the page can stay cached.
- * Counts and the comment box load in the browser.
+ * Was-this-helpful vote. Markup is the same for every visitor so the page can stay cached; counts
+ * and the comment box load in the browser. When the host gives EmDash the visitor's address
+ * (Cloudflare, or trustedProxyHeaders) everyone votes through the guest route. Otherwise votes go
+ * through the member route: a member's vote counts, and a guest is shown the sign-in link.
  */
 import { jsonForScript } from "../lib/knowx";
 import { kx } from "../lib/knowx-strings";
@@ -27,14 +29,18 @@ const copy = jsonForScript({
 	stillBody: kx.stillNeedBody,
 	stillButton: kx.stillNeedButton,
 	question: kx.helpfulQuestion,
+	membersOnly: kx.helpfulMembersOnly,
+	signIn: kx.helpfulSignIn,
 });
+const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pathname)}`;
 ---
 
 <section class="wb wb-card" data-kx-helpful data-id={id} aria-labelledby="kx-helpful-h">
 	<script type="application/json" data-kx-helpful-copy set:html={copy}></script>
 	<h2 id="kx-helpful-h">{kx.helpfulQuestion}</h2>
 	<p class="wb-sr" data-kx-tally hidden></p>
-	<div class="wb-summary">
+	<p class="wb-muted" data-kx-signin aria-live="polite" tabindex="-1" hidden><span data-kx-signin-text>{kx.helpfulSignIn}</span> <a href={signIn}>{kx.helpfulSignInLink}</a></p>
+	<div class="wb-summary" data-kx-buttons>
 		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="yes" aria-pressed="false">{kx.helpfulYes}</button>
 		<button class="wb-btn wb-btn--quiet" type="button" data-kx-vote="no" aria-pressed="false">{kx.helpfulNo}</button>
 	</div>
@@ -57,16 +63,10 @@ const copy = jsonForScript({
 <script>
 	import { api } from "../lib/wbcom-kit";
 	import { phrase } from "../lib/knowx-strings";
+	import { visitorId } from "../lib/knowx";
 
-	const VID = "knowx_vid";
-
-	function visitorId(): string {
-		const found = document.cookie.match(/(?:^|; )knowx_vid=([^;]+)/);
-		if (found?.[1]) return decodeURIComponent(found[1]);
-		const id = crypto.randomUUID();
-		document.cookie = `${VID}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-		return id;
-	}
+	/** Refusals that mean "sign in to do this", from this engine or the one before it. */
+	const SIGN_IN_CODES = new Set(["SIGN_IN_REQUIRED", "GUEST_UNAVAILABLE"]);
 
 	function copyOf(root: HTMLElement) {
 		try {
@@ -104,7 +104,26 @@ const copy = jsonForScript({
 		const commentForm = root.querySelector<HTMLFormElement>("[data-kx-comment]");
 		const contact = root.querySelector<HTMLElement>("[data-kx-contact]");
 		const contactLink = root.querySelector<HTMLAnchorElement>("[data-kx-contact-link]");
-		const config = await api("knowx", "config");
+		const [config, health] = await Promise.all([api("knowx", "config"), api("knowx", "health")]);
+		// No visitor address on this host: only signed-in members can vote. guestWrites is per host,
+		// so every visitor gets the same hint; a missing field (engine 0.1.4) means guests may vote.
+		const membersOnly = health.ok === true && health.guestWrites === false;
+		const signIn = root.querySelector<HTMLElement>("[data-kx-signin]");
+		const signInText = root.querySelector<HTMLElement>("[data-kx-signin-text]");
+		if (membersOnly && signIn) {
+			if (signInText && copy.membersOnly) signInText.textContent = copy.membersOnly;
+			signIn.hidden = false;
+		}
+		const askToSignIn = () => {
+			const buttons = root.querySelector<HTMLElement>("[data-kx-buttons]");
+			if (buttons) buttons.hidden = true;
+			if (status) status.hidden = true;
+			if (signIn) {
+				if (signInText && copy.signIn) signInText.textContent = copy.signIn;
+				signIn.hidden = false;
+				signIn.focus();
+			}
+		};
 		const askComment = config.askComment !== false;
 		const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
 		if (contactLink && contactUrl) contactLink.href = contactUrl;
@@ -112,14 +131,30 @@ const copy = jsonForScript({
 
 		const vote = async (helpful: boolean, comment = "") => {
 			if (!status) return;
-			const result = await api("knowx", "helpful", { id, helpful, comment, vid: visitorId() });
+			const body = { id, helpful, comment, vid: visitorId() };
+			// A signed-in member votes only through the member route (one vote per member, never one by
+			// address as well). It is tried on every click, so a reader who signs in during the visit
+			// votes by account at once. A guest's click answers 401 there (expected, one per click) and
+			// then uses the guest route; an engine without the member route (0.1.4) falls back the same way.
+			let result = await api("knowx", "helpful_member", body);
+			const code = result.error?.code;
+			if (!result.ok && (code === "SIGN_IN_REQUIRED" || code === "FAILED" || code === "NOT_FOUND")) {
+				result = membersOnly ? { ok: false, error: { code: "GUEST_UNAVAILABLE" } } : await api("knowx", "helpful", body);
+			}
 			status.hidden = false;
+			const why = (result.error as { reason?: string } | undefined)?.reason || result.error?.code || "";
+			if (SIGN_IN_CODES.has(why)) {
+				askToSignIn();
+				return;
+			}
 			if (!result.ok) {
 				status.dataset.tone = "error";
 				status.textContent = phrase(result.error?.code);
 				return;
 			}
 			status.dataset.tone = "success";
+			// The vote counted, so this reader may vote here: the members-only hint has done its job.
+			if (signIn) signIn.hidden = true;
 			// An older strings file may not have the newer phrases yet.
 			status.textContent = (comment ? copy.commentThanks || copy.thanks : copy.thanks) || "";
 			markChoice(root, helpful);

@@ -2,6 +2,25 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.1.5] - 2026-10-19
+
+Copy the site kit again after you update: run the command from the install guide with the new tag.
+
+- Security - Guests can vote and searches are counted only when the host gives EmDash the visitor's address (Cloudflare, or trustedProxyHeaders); elsewhere a guest who votes is asked to sign in, and signed-in members vote through a new member route.
+- Security - A signed-in member's vote counts only through the member route, so a member no longer gets one vote by address and another by account.
+- Security - The search log keeps at most 5000 terms, a forged "results found" can no longer hide a search that found nothing, and oversized log requests are refused.
+- Security - Phone numbers typed with dashes or brackets are never stored in the search log, and a contact link with a backslash or a control character is refused.
+- New      - One command copies the site kit and creates the Help articles and FAQs content types: scripts/add-to-site.sh.
+- New      - Insights opens with a Set up visitor pages card that gives the kit command for the installed version, with Show the setup steps again once it is closed.
+- New      - Top searches on Insights has a find box and pages 25 terms at a time.
+- Improve  - Insights counts every search and every vote, not only the latest 100 rows, and keeps empty searches listed for 30 days however busy other terms are.
+- Improve  - Insights says where to add the first help article and FAQ, by name, and says plainly when guests cannot vote on this host.
+- Improve  - Copying the kit again backs up only the kit files you edited, lists them, and says when it upgrades a shared file.
+- Improve  - Install guides start with what the site needs first (sandbox runner, Node 22.16, the kit at the release tag), explain which proxy header to trust, and were checked on EmDash 1.3.1.
+- Fix      - Help pages line up with the theme's header and footer instead of sitting 8px inside them.
+- Fix      - Kit buttons keep 4.5:1 contrast in dark mode on the blog template (shared kit styles version 4).
+- Fix      - A site still on the 0.1.4 engine keeps one vote per browser after copying the new kit.
+
 ## [0.1.4] - 2026-10-15
 
 Copy `site-kit/` again after you update.

@@ -10,7 +10,7 @@ export async function articleCollection(ctx: PluginContext): Promise<string> {
 	return asString(await ctx.settings.get<string>("collection")) || DOCS;
 }
 
-async function publishedCount(ctx: PluginContext, collection: string): Promise<number> {
+export async function publishedCount(ctx: PluginContext, collection: string): Promise<number> {
 	if (!ctx.content?.list) return 0;
 	let count = 0;
 	let cursor: string | undefined;
@@ -31,9 +31,13 @@ export async function collectionStatus(ctx: PluginContext): Promise<{
 	collectionExists: boolean;
 	articleCount: number;
 	faqCollectionExists: boolean;
+	/** Names the owner sees under Content in the admin menu. */
+	articleLabel: string;
+	faqLabel: string;
 }> {
 	const collection = await articleCollection(ctx);
 	const collections = (await ctx.schema?.listCollections()) ?? [];
+	const label = (slug: string, fallback: string) => collections.find((item) => item.slug === slug)?.label || fallback;
 	const slugs = new Set(collections.map((item) => item.slug));
 	const collectionExists = slugs.has(collection);
 	return {
@@ -41,6 +45,8 @@ export async function collectionStatus(ctx: PluginContext): Promise<{
 		collectionExists,
 		articleCount: collectionExists ? await publishedCount(ctx, collection) : 0,
 		faqCollectionExists: slugs.has(FAQ),
+		articleLabel: label(collection, "Help articles"),
+		faqLabel: label(FAQ, "FAQs"),
 	};
 }
 
