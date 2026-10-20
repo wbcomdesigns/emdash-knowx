@@ -4,7 +4,7 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 
 ## [0.2.0] - 2026-10-20
 
-Every help page, vote, search, admin screen and action now fits Cloudflare's limit of 10 requests per plugin call. No new permission. The site kit is unchanged.
+Every help page, vote, search, admin screen and action now fits Cloudflare's limit of 10 requests per plugin call. No new permission. Copy the site kit again after you update.
 
 - New      - Each article keeps its Yes and No counts, updated in the same step as the vote, so a page reads them in one request on any size of site.
 - New      - A Searches screen holds Top searches and Searches with no results; Insights keeps the counts, the chart, the least helpful articles and the recent comments.
@@ -13,6 +13,8 @@ Every help page, vote, search, admin screen and action now fits Cloudflare's lim
 - Improve  - Settings reads every setting in one request and saves each tab with one write.
 - Improve  - The help home reads every product icon in one request.
 - Improve  - Articles on Insights and the health check count up to 100 and then show 100+.
+- Improve  - Yes and No on Was this helpful work as soon as the page is interactive and show a pending state while the vote is sent; whether guests may vote is asked once per browser session.
+- Improve  - A top-level help card with sub-categories names them next to its count of articles filed directly in it.
 - Fix      - On Cloudflare a guest or member vote no longer shows "Something went wrong" after the vote was saved.
 - Fix      - On Cloudflare Insights, Settings, every Settings save, the dashboard card and Top searches paging no longer fail with too many requests.
 - Fix      - On Cloudflare a search at the 5000-term log cap is counted without passing the limit, and a burst of searches never retries past it.

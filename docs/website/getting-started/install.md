@@ -74,8 +74,8 @@ plus a **Help categories** taxonomy for topics. Search is turned on for both. An
 
 Only for a site whose database is not a local SQLite file. Use exactly these slugs: KnowX and the kit look for them.
 
-1. **Content Types**, **New Content Type**: label **Help articles**, slug `docs`, URL Pattern `/docs/{slug}`. Tick **Drafts**, **Revisions**, **Preview** and **Search**. Add the fields **Title** (slug `title`, Short text, required), **Excerpt** (`excerpt`, Long text), **Content** (`content`, Rich Text) and **Applies to version** (`applies_to_version`, Short text). Turn on **Searchable** for Title, Excerpt and Content.
-2. **Content Types**, **New Content Type**: label **FAQs**, slug `faq`, URL Pattern `/docs/faq/{slug}`. Tick the same four options. Add **Question** (slug `title`, Short text, required) and **Answer** (`answer`, Rich Text), both **Searchable**.
+1. **Content Types**, **New Content Type**: **Label (Singular)** `Help article`, **Label (Plural)** `Help articles`, slug `docs`, URL Pattern `/docs/{slug}`. Tick **Drafts**, **Revisions**, **Preview** and **Search**. Add the fields **Title** (slug `title`, **Short Text**, required), **Excerpt** (`excerpt`, **Long Text**), **Content** (`content`, **Rich Text**) and **Applies to version** (`applies_to_version`, **Short Text**). Turn on **Searchable** for Title, Excerpt and Content.
+2. **Content Types**, **New Content Type**: **Label (Singular)** `FAQ`, **Label (Plural)** `FAQs`, slug `faq`, URL Pattern `/docs/faq/{slug}`. Tick the same four options. Add **Question** (slug `title`, **Short Text**, required) and **Answer** (`answer`, **Rich Text**), both **Searchable**.
 3. **Taxonomies**, **New Taxonomy**: label **Help categories**, slug `doc_category`, **Hierarchical**, for **Help articles**.
 
 **Step 3.** The help pages need nothing pasted. The script prints one optional pair of lines: a help search box on every blog post, for `src/pages/posts/[slug].astro`:

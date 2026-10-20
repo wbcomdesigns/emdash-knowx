@@ -5,6 +5,7 @@ Every help page, vote, search and admin screen now fits Cloudflare's limit of 10
 - New      - Each article keeps running Yes and No counts, updated with the vote.
 - New      - A Searches screen holds Top searches and Searches with no results.
 - New      - Data from 0.1.x is brought over a step at a time as Insights opens.
+- Improve  - Was this helpful answers clicks at once and shows the vote is being sent. Copy the kit again.
 - Fix      - On Cloudflare a vote no longer shows "Something went wrong" after it was saved.
 - Fix      - On Cloudflare Insights, Settings and their actions no longer fail on a busy site.
 - Fix      - The setup card says where to create the content types on a site without SQLite.

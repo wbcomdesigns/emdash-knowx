@@ -96,30 +96,70 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 		});
 	}
 
-	document.querySelectorAll<HTMLElement>("[data-kx-helpful]").forEach(async (root) => {
+	/**
+	 * Whether this host lets guests vote (it gives EmDash the visitor's address). It is the same for
+	 * every page of the site, so it is asked once per browser session, never before a vote: on
+	 * Cloudflare the health route takes seconds. Unknown (undefined) until health or a guest vote answers.
+	 */
+	const GUEST_KEY = "knowx-guest-writes";
+	let guestWrites: boolean | undefined;
+	try {
+		const saved = sessionStorage.getItem(GUEST_KEY);
+		if (saved !== null) guestWrites = saved === "1";
+	} catch {
+		guestWrites = undefined;
+	}
+	function rememberGuestWrites(value: boolean) {
+		guestWrites = value;
+		try {
+			sessionStorage.setItem(GUEST_KEY, value ? "1" : "0");
+		} catch {
+			// Storage blocked: health is simply asked again on the next page.
+		}
+	}
+	// A missing field (engine 0.1.4) means guests may vote.
+	const guestWritesKnown: Promise<boolean | undefined> =
+		guestWrites !== undefined || !document.querySelector("[data-kx-helpful]")
+			? Promise.resolve(guestWrites)
+			: api("knowx", "health").then((health) => {
+					if (health.ok !== true) return guestWrites;
+					// A guest vote that answered first already knows.
+					if (guestWrites === undefined) rememberGuestWrites(health.guestWrites !== false);
+					return guestWrites;
+				});
+
+	document.querySelectorAll<HTMLElement>("[data-kx-helpful]").forEach((root) => {
 		const id = root.dataset.id || "";
 		const copy = copyOf(root);
 		const status = root.querySelector<HTMLElement>("[data-kx-status]");
 		const commentForm = root.querySelector<HTMLFormElement>("[data-kx-comment]");
 		const contact = root.querySelector<HTMLElement>("[data-kx-contact]");
 		const contactLink = root.querySelector<HTMLAnchorElement>("[data-kx-contact-link]");
-		const [config, health] = await Promise.all([api("knowx", "config"), api("knowx", "health")]);
-		// No visitor address on this host: only signed-in members can vote. guestWrites is per host,
-		// so every visitor gets the same hint; a missing field (engine 0.1.4) means guests may vote.
-		const membersOnly = health.ok === true && health.guestWrites === false;
 		const signIn = root.querySelector<HTMLElement>("[data-kx-signin]");
 		const signInText = root.querySelector<HTMLElement>("[data-kx-signin-text]");
-		// On such a host, ask once whether this reader is a member. The member vote route answers a
-		// guest with 401 (expected, documented) and a member with VALIDATION_ERROR for the empty
-		// body, so nothing is stored. A guest then gets Yes and No marked unavailable (out of the tab
-		// order) and the sign-in line as the action; a member votes as usual.
+		const voteButtons = root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]");
 		let guestBlocked = false;
-		if (membersOnly) {
+		let busy = false;
+		let voted = false;
+
+		// Config and the tally load side by side and never hold up a vote.
+		const configLoaded = api("knowx", "config");
+		configLoaded.then((config) => {
+			if (contactLink && typeof config.contactUrl === "string" && config.contactUrl) contactLink.href = config.contactUrl;
+		});
+		void tally(root, id, copy.tally || "");
+
+		// On a host with no visitor address, ask once whether this reader is a member. The member vote
+		// route answers a guest with 401 (expected, documented) and a member with VALIDATION_ERROR for
+		// the empty body, so nothing is stored. A guest then gets Yes and No marked unavailable (out of
+		// the tab order) and the sign-in line as the action; a member votes as usual. Until this
+		// answers, a click votes and the answer itself says whether to sign in.
+		guestWritesKnown.then(async (allowed) => {
+			if (allowed !== false) return;
 			const probe = await api("knowx", "helpful_member", {});
-			guestBlocked = probe.error?.code === "SIGN_IN_REQUIRED";
-		}
-		if (guestBlocked) {
-			root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]").forEach((button) => {
+			if (probe.error?.code !== "SIGN_IN_REQUIRED" || busy || voted) return;
+			guestBlocked = true;
+			voteButtons.forEach((button) => {
 				button.disabled = true;
 				button.setAttribute("aria-disabled", "true");
 			});
@@ -127,7 +167,8 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 				if (signInText && copy.signIn) signInText.textContent = copy.signIn;
 				signIn.hidden = false;
 			}
-		}
+		});
+
 		const askToSignIn = () => {
 			const buttons = root.querySelector<HTMLElement>("[data-kx-buttons]");
 			if (buttons) buttons.hidden = true;
@@ -138,54 +179,67 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 				signIn.focus();
 			}
 		};
-		const askComment = config.askComment !== false;
-		const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
-		if (contactLink && contactUrl) contactLink.href = contactUrl;
-		await tally(root, id, copy.tally || "");
 
-		const vote = async (helpful: boolean, comment = "") => {
-			if (!status || guestBlocked) return;
-			const body = { id, helpful, comment, vid: visitorId() };
-			// A signed-in member votes only through the member route (one vote per member, never one by
-			// address as well). It is tried on every click, so a reader who signs in during the visit
-			// votes by account at once. A guest's click answers 401 there (expected, one per click) and
-			// then uses the guest route; an engine without the member route (0.1.4) falls back the same way.
-			let result = await api("knowx", "helpful_member", body);
-			const code = result.error?.code;
-			if (!result.ok && (code === "SIGN_IN_REQUIRED" || code === "FAILED" || code === "NOT_FOUND")) {
-				result = membersOnly ? { ok: false, error: { code: "GUEST_UNAVAILABLE" } } : await api("knowx", "helpful", body);
+		const vote = async (helpful: boolean, pressed: HTMLButtonElement | null, comment = "") => {
+			if (!status || guestBlocked || busy) return;
+			busy = true;
+			pressed?.setAttribute("aria-busy", "true");
+			try {
+				const body = { id, helpful, comment, vid: visitorId() };
+				// A signed-in member votes only through the member route (one vote per member, never one by
+				// address as well). It is tried on every click, so a reader who signs in during the visit
+				// votes by account at once. A guest's click answers 401 there (expected, one per click) and
+				// then uses the guest route; an engine without the member route (0.1.4) falls back the same
+				// way. The guest route itself answers GUEST_UNAVAILABLE on a host with no visitor address
+				// (engine 0.1.5 and later), so a vote never waits for health.
+				let result = await api("knowx", "helpful_member", body);
+				const code = result.error?.code;
+				if (!result.ok && (code === "SIGN_IN_REQUIRED" || code === "FAILED" || code === "NOT_FOUND")) {
+					if (guestWrites === false) result = { ok: false, error: { code: "GUEST_UNAVAILABLE" } };
+					else {
+						result = await api("knowx", "helpful", body);
+						const reason = (result.error as { reason?: string } | undefined)?.reason;
+						if (result.ok) rememberGuestWrites(true);
+						else if (reason === "GUEST_UNAVAILABLE") rememberGuestWrites(false);
+					}
+				}
+				status.hidden = false;
+				const why = (result.error as { reason?: string } | undefined)?.reason || result.error?.code || "";
+				if (SIGN_IN_CODES.has(why)) {
+					askToSignIn();
+					return;
+				}
+				if (!result.ok) {
+					status.dataset.tone = "error";
+					status.textContent = phrase(result.error?.code);
+					return;
+				}
+				voted = true;
+				status.dataset.tone = "success";
+				// The vote counted, so this reader may vote here: the members-only hint has done its job.
+				if (signIn) signIn.hidden = true;
+				// An older strings file may not have the newer phrases yet.
+				status.textContent = (comment ? copy.commentThanks || copy.thanks : copy.thanks) || "";
+				markChoice(root, helpful);
+				const config = await configLoaded;
+				const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
+				if (commentForm) commentForm.hidden = helpful || config.askComment === false || Boolean(comment);
+				if (contact) contact.hidden = helpful || !contactUrl;
+				void tally(root, id, copy.tally || "");
+			} finally {
+				busy = false;
+				pressed?.removeAttribute("aria-busy");
 			}
-			status.hidden = false;
-			const why = (result.error as { reason?: string } | undefined)?.reason || result.error?.code || "";
-			if (SIGN_IN_CODES.has(why)) {
-				askToSignIn();
-				return;
-			}
-			if (!result.ok) {
-				status.dataset.tone = "error";
-				status.textContent = phrase(result.error?.code);
-				return;
-			}
-			status.dataset.tone = "success";
-			// The vote counted, so this reader may vote here: the members-only hint has done its job.
-			if (signIn) signIn.hidden = true;
-			// An older strings file may not have the newer phrases yet.
-			status.textContent = (comment ? copy.commentThanks || copy.thanks : copy.thanks) || "";
-			markChoice(root, helpful);
-			if (commentForm) commentForm.hidden = helpful || !askComment || Boolean(comment);
-			if (contact) contact.hidden = helpful || !contactUrl;
-			await tally(root, id, copy.tally || "");
 		};
 
-		root.querySelectorAll<HTMLButtonElement>("[data-kx-vote]").forEach((button) => {
-			button.addEventListener("click", () => vote(button.dataset.kxVote === "yes"));
+		voteButtons.forEach((button) => {
+			button.addEventListener("click", () => vote(button.dataset.kxVote === "yes", button));
 		});
 
 		commentForm?.addEventListener("submit", (event) => {
 			event.preventDefault();
 			const text = String(new FormData(commentForm).get("comment") || "");
-			vote(false, text);
+			vote(false, commentForm.querySelector<HTMLButtonElement>("button[type=submit]"), text);
 		});
-
 	});
 </script>

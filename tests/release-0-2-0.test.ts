@@ -178,3 +178,43 @@ describe("site counters", () => {
 		expect(stats.days.reduce((sum, day) => sum + day.searches, 0)).toBe(8);
 	});
 });
+
+describe("Was this helpful works as soon as the page is interactive (Cloudflare walk)", () => {
+	const source = async () => {
+		// @ts-expect-error vite raw import
+		const raw = String((await import("../site-kit/components/Helpful.astro?raw")).default);
+		return raw.slice(raw.indexOf("<script>\n"));
+	};
+
+	it("wires Yes and No before any request answers", async () => {
+		const script = await source();
+		const perRoot = script.slice(script.indexOf('document.querySelectorAll<HTMLElement>("[data-kx-helpful]").forEach('));
+		expect(perRoot).toMatch(/forEach\(\(root\) =>/);
+		const wiring = perRoot.indexOf("addEventListener(\"click\"");
+		expect(wiring).toBeGreaterThan(0);
+		// Inside the per-article setup nothing is awaited before the buttons are wired: only inside callbacks.
+		const setup = perRoot.slice(0, perRoot.indexOf("const vote = async"));
+		expect(setup.replace(/\.then\(async[\s\S]*?\n\t\t\}\);/g, "")).not.toMatch(/\bawait\b/);
+		expect(script).not.toContain('Promise.all([api("knowx", "config"), api("knowx", "health")])');
+	});
+
+	it("asks health at most once per browser session and never before a vote", async () => {
+		const script = await source();
+		expect(script.match(/api\("knowx", "health"\)/g)).toHaveLength(1);
+		expect(script).toContain("sessionStorage.getItem(GUEST_KEY)");
+		expect(script).toContain("sessionStorage.setItem(GUEST_KEY");
+		const vote = script.slice(script.indexOf("const vote = async"), script.indexOf("voteButtons.forEach((button) => {\n\t\t\tbutton.addEventListener"));
+		expect(vote).not.toContain("guestWritesKnown");
+		expect(vote).not.toContain('"health"');
+		// Unknown guestWrites: the guest route is called and its GUEST_UNAVAILABLE becomes the sign-in line.
+		expect(vote).toContain('if (guestWrites === false) result = { ok: false, error: { code: "GUEST_UNAVAILABLE" } };');
+		expect(script).toContain('const SIGN_IN_CODES = new Set(["SIGN_IN_REQUIRED", "GUEST_UNAVAILABLE"]);');
+	});
+
+	it("marks the pressed button pending while the vote is sent, and ignores double clicks", async () => {
+		const script = await source();
+		expect(script).toContain('pressed?.setAttribute("aria-busy", "true");');
+		expect(script).toContain('pressed?.removeAttribute("aria-busy");');
+		expect(script).toContain("if (!status || guestBlocked || busy) return;");
+	});
+});

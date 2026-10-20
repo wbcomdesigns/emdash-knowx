@@ -66,7 +66,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-8 | Press Visitor pages are set up, reload Insights, then Show the setup steps again; update the plugin | The card is one line after the press and after the reload, comes back on Show the setup steps again, and comes back after a version change |
 | A-9 | Site updated from 0.1.5 with votes, comments and a week of searches: open Insights repeatedly | "Bringing over data from KnowX 0.1" with a vote count and Continue, then "Insights is ready" with Show Insights, then the full page. Helpful rate, least helpful articles (by name), comments and the searches chart match what 0.1.5 showed. Pressing Continue twice quickly, or Insights open in two tabs, counts nothing twice. A trashed article never shows in Least helpful |
 | A-10 | Site with more than 100 published articles: open Insights | Articles shows 100+ |
-| A-11 | Searches: Find, Next page, Previous page, First page; leave and open Searches again | Each works; reopening starts at page 1 with an empty find box |
+| A-11 | Searches: Find, Load more, Previous page, First page; leave and open Searches again | Each works; reopening starts at page 1 with an empty find box |
 
 ## Cloudflare (call budget, every release)
 
@@ -79,7 +79,7 @@ Run on the Cloudflare testbed with the plugin from the registry, the kit from th
 | C-3 | Guest searches for a known word, a new word and nonsense; open Searches | All three listed; nonsense under Searches with no results; Insights searches this week up by three |
 | C-4 | Help home with 12 product cards; FAQ page; a category | Each loads, each card has its icon |
 | C-5 | Insights load (and Continue until the full page on an updated site), Visitor pages are set up, reload, Show the setup steps again | Each loads; "set up" stays after the reload |
-| C-6 | Searches: load, Find, Next page, Previous page, First page | Each loads |
+| C-6 | Searches: load, Find, Load more, Previous page, First page | Each loads |
 | C-7 | Settings: load, save each tab (Feedback, Still need help, Search, Product icons with 12 icons) | Each saves with a success message and shows the saved value |
 | C-8 | Dashboard KnowX card | Loads with empty searches this week and the least helpful article by name |
 

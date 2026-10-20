@@ -62,6 +62,8 @@ export const kx = {
 	stillNeedBody: "If this did not answer your question, you can contact us.",
 	stillNeedButton: "Contact us",
 	articlesCount: (n: number) => (n === 1 ? "1 article" : `${n} articles`),
+	/** After a top-level card's article count, which counts only articles filed directly in it. */
+	subtopicsCount: (n: number) => (n === 1 ? "1 sub-topic" : `${n} sub-topics`),
 	rateLimited: "Too many requests. Try again in an hour.",
 	offline: "Could not reach the site. Check your connection.",
 	fallback: "Something went wrong. Try again.",
