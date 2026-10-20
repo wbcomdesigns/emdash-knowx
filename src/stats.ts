@@ -37,8 +37,19 @@ const delta = (n: number): Delta | undefined => (n > 0 ? { inc: n } : n < 0 ? { 
 /**
  * Apply `deltas` to the site record, or create it with `create` applied when it does not exist.
  * At most three calls: the update, a create, and the update again when a parallel call created it.
+ * `createFirst` (the record may well be missing) tries the create first: at most two calls, since
+ * the record is never deleted and the update that follows a lost create always applies.
  */
-async function bump(ctx: Ctx, b: Budget, deltas: Record<string, Delta>, create: (row: Record<string, unknown>) => void) {
+async function bump(ctx: Ctx, b: Budget, deltas: Record<string, Delta>, create: (row: Record<string, unknown>) => void, createFirst = false) {
+	if (createFirst) {
+		if (!spend(b)) return;
+		const row = freshRow();
+		create(row);
+		if ((await ctx.storage[STATS].compareAndSet(SITE, null, row)).applied) return;
+		if (!spend(b)) return;
+		await ctx.storage[STATS].updateIf(SITE, { where: {}, delta: deltas });
+		return;
+	}
 	if (!spend(b)) return;
 	if ((await ctx.storage[STATS].updateIf(SITE, { where: {}, delta: deltas })).applied) return;
 	if (!spend(b)) return;
@@ -56,12 +67,12 @@ export async function ensureStats(ctx: Ctx, b: Budget): Promise<void> {
 }
 
 /** Add votes to the site totals (negative numbers take them away). */
-export async function addTotals(ctx: Ctx, b: Budget, yes: number, no: number): Promise<void> {
+export async function addTotals(ctx: Ctx, b: Budget, yes: number, no: number, createFirst = false): Promise<void> {
 	const deltas: Record<string, Delta> = {};
 	if (delta(yes)) deltas.yes = delta(yes)!;
 	if (delta(no)) deltas.no = delta(no)!;
 	if (!Object.keys(deltas).length) return;
-	await bump(ctx, b, deltas, (row) => Object.assign(row, { yes: Math.max(0, yes), no: Math.max(0, no) }));
+	await bump(ctx, b, deltas, (row) => Object.assign(row, { yes: Math.max(0, yes), no: Math.max(0, no) }), createFirst);
 }
 
 /**

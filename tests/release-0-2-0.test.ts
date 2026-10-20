@@ -30,36 +30,39 @@ describe("0.1.5 data on the 0.2.0 engine (#48)", () => {
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Alpha" }, { title: "Beta" }, { title: "Gamma" }]);
 		const [a, b, c] = ids as [string, string, string];
-		// Alpha: 1 yes 3 no (weak, one comment). Beta: 2 yes. Gamma: 1 no.
+		// Alpha: 1 yes 3 no (weak, one comment). Beta: 2 yes 1 no (one comment). Gamma: 1 no.
 		await site.rt.fixtures.plugin.storage("feedback", `${a}:v1`, oldVote(a, "v1", true));
 		await site.rt.fixtures.plugin.storage("feedback", `${a}:v2`, oldVote(a, "v2", false, "Too short"));
 		await site.rt.fixtures.plugin.storage("feedback", `${a}:v3`, oldVote(a, "v3", false));
 		await site.rt.fixtures.plugin.storage("feedback", `${a}:v4`, oldVote(a, "v4", false));
 		await site.rt.fixtures.plugin.storage("feedback", `${b}:v1`, oldVote(b, "v1", true));
 		await site.rt.fixtures.plugin.storage("feedback", `${b}:v2`, oldVote(b, "v2", true));
+		await site.rt.fixtures.plugin.storage("feedback", `${b}:v3`, oldVote(b, "v3", false, "Old on Beta"));
 		await site.rt.fixtures.plugin.storage("feedback", `${c}:v1`, oldVote(c, "v1", false));
 		const today = new Date().toISOString().slice(0, 10);
 		await site.rt.fixtures.plugin.kv(`day:${today}`, "7|2");
 
 		// A visitor opens Beta before the owner opens Insights: tally counts it from its rows.
-		expect(await site.call("tally", { id: b })).toMatchObject({ ok: true, yes: 2, no: 0 });
+		expect(await site.call("tally", { id: b })).toMatchObject({ ok: true, yes: 2, no: 1 });
 		// The 0.1.5 kit flow: read the counts, ask the member route, then vote as a guest.
-		expect(await site.call("helpful", { id: b, helpful: false, comment: "Changed" }, guest("198.51.100.9"))).toMatchObject({ ok: true, yes: 2, no: 1 });
+		expect(await site.call("helpful", { id: b, helpful: false, comment: "Changed" }, guest("198.51.100.9"))).toMatchObject({ ok: true, yes: 2, no: 2 });
 
 		let page: unknown;
 		for (let i = 0; i < 10 && !full(page); i += 1) page = await admin(site, { type: "page_load", page: "/insights" });
 		expect(full(page)).toBe(true);
 		const body = text(page);
-		// 3 yes and 5 no over the three articles: 38%.
-		expect(body).toContain('"label":"Helpful rate","value":"38%"');
+		// 3 yes and 6 no over the three articles: 33%.
+		expect(body).toContain('"label":"Helpful rate","value":"33%"');
 		expect(body).toContain('"label":"Searches this week","value":"7"');
 		expect(body).toContain('"label":"Searches with no results","value":"2"');
 		expect(body).toContain('"article":"Alpha","no":"3","yes":"1"');
 		expect(body).toContain('"article":"Gamma","no":"1","yes":"0"');
 		expect(body).toContain('"article":"Alpha","comment":"Too short"');
 		expect(body).toContain('"article":"Beta","comment":"Changed"');
+		// An old comment on an article tally counted before the upgrade reached it is still listed.
+		expect(body).toContain('"article":"Beta","comment":"Old on Beta"');
 		expect(await site.call("tally", { id: a })).toMatchObject({ yes: 1, no: 3 });
-		expect(await site.call("tally", { id: b })).toMatchObject({ yes: 2, no: 1 });
+		expect(await site.call("tally", { id: b })).toMatchObject({ yes: 2, no: 2 });
 
 		// A 0.1.5 voter changes their old vote: moved, never counted twice.
 		const old = await site.rt.inspect.storage.get<Record<string, unknown>>("feedback", `${a}:v2`);
@@ -67,15 +70,59 @@ describe("0.1.5 data on the 0.2.0 engine (#48)", () => {
 		await site.call("helpful_member", { id: c, helpful: true }, { method: "POST", user: ana });
 		expect(await site.call("tally", { id: c })).toMatchObject({ yes: 1, no: 1 });
 		const after = text(await admin(site, { type: "page_load", page: "/insights" }));
-		expect(after).toContain('"label":"Helpful rate","value":"44%"');
+		expect(after).toContain('"label":"Helpful rate","value":"40%"');
 	});
 
-	it("a new site shows the full Insights page on the first load and stores nothing to do it", async () => {
+	it("a new site shows the full Insights page on every load, and the upgrade finishes", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt, [{ title: "Alpha" }]);
-		expect(full(await admin(site, { type: "page_load", page: "/insights" }))).toBe(true);
-		expect(await site.rt.inspect.setting("upgrade_0_2")).toBeNull();
+		for (let i = 0; i < 3; i += 1) expect(full(await admin(site, { type: "page_load", page: "/insights" }))).toBe(true);
+		expect(await site.rt.inspect.setting("upgrade_0_2")).toEqual({ done: true });
+	});
+
+	it("two steps at once (double click, two tabs) count old votes and days once", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const { ids } = await withDocs(site.rt, [{ title: "Alpha" }, { title: "Beta" }]);
+		const [a, b] = ids as [string, string];
+		await site.rt.fixtures.plugin.storage("feedback", `${a}:v1`, oldVote(a, "v1", true));
+		await site.rt.fixtures.plugin.storage("feedback", `${a}:v2`, oldVote(a, "v2", false, "Too short"));
+		await site.rt.fixtures.plugin.storage("feedback", `${b}:v1`, oldVote(b, "v1", false));
+		const today = new Date().toISOString().slice(0, 10);
+		await site.rt.fixtures.plugin.kv(`day:${today}`, "7|2");
+
+		let pages: unknown[] = [];
+		for (let i = 0; i < 10 && !pages.some(full); i += 1) {
+			pages = await Promise.all([admin(site, { type: "page_load", page: "/insights" }), admin(site, { type: "block_action", action_id: "upgrade_step", page: "/insights" })]);
+		}
+		const body = text(await admin(site, { type: "page_load", page: "/insights" }));
+		// 1 yes and 2 no: 33%, not doubled; 7 searches from 0.1.5, merged once.
+		expect(body).toContain('"label":"Helpful rate","value":"33%"');
+		expect(body).toContain('"label":"Searches this week","value":"7"');
+		expect(await site.rt.inspect.storage.get("stats", "site")).toMatchObject({ yes: 1, no: 2 });
+		// The merged day counter is removed once the merge is stored.
+		expect(await site.rt.inspect.kv.get(`day:${today}`)).toBeNull();
+		expect(await site.call("tally", { id: a })).toMatchObject({ yes: 1, no: 1 });
+		expect(await site.rt.inspect.setting("upgrade_0_2")).toEqual({ done: true });
+	});
+});
+
+describe("articles that are gone from Least helpful (#49)", () => {
+	it("skips counts with no title (trashed or unpublished) and still lists 10", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const { ids } = await withDocs(site.rt, Array.from({ length: 11 }, (_, i) => ({ title: `Kept ${i}` })));
+		await site.rt.fixtures.plugin.setting("upgrade_0_2", { done: true });
+		for (const [i, id] of ids.entries()) await site.rt.fixtures.plugin.storage("article_votes", id, { doc: id, yes: 0, no: 20 - i, net: 20 - i, title: `Kept ${i}`, titledAt: "" });
+		// Counted from 0.1.x, then trashed before the upgrade named them: the most No votes of all.
+		for (const gone of ["gone-1", "gone-2", "gone-3"]) await site.rt.fixtures.plugin.storage("article_votes", gone, { doc: gone, yes: 0, no: 99, net: 99, title: "", titledAt: "" });
+		const page = await admin(site, { type: "page_load", page: "/insights" });
+		const weak = (page as { blocks: Array<{ page_action_id?: string; rows?: Array<{ article: string }> }> }).blocks.find((block) => block.page_action_id === "weak_page");
+		expect(weak?.rows?.map((row) => row.article)).toEqual(Array.from({ length: 10 }, (_, i) => `Kept ${i}`));
+		const widget = text(await admin(site, { type: "page_load", page: "widget:insights" }));
+		expect(widget).toContain("Least helpful article: Kept 0.");
+		expect(widget).not.toContain("Help article");
 	});
 });
 

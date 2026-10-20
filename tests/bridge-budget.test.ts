@@ -28,10 +28,12 @@ const MEASURED: Record<string, number> = {
 	"route helpful (first guest on the site)": 8,
 	"route helpful (article not counted yet)": 8,
 	"route helpful_member (change vote)": 9,
-	"admin page_load /insights (0.1.5 data, worst step)": 7,
-	"admin page_load /insights (0.1.5 votes, no searches, worst step)": 7,
+	"admin page_load /insights (0.1.5 data, worst step)": 9,
+	"admin page_load /insights (0.1.5 votes, no searches, worst step)": 9,
 	"admin page_load /insights (busy, counted)": 7,
-	"admin page_load /insights (new site, nothing to bring over)": 8,
+	"admin page_load /insights (new site, nothing to bring over)": 9,
+	"admin page_load /insights (new site, second load stores done)": 9,
+	"admin page_load /insights (new site, done)": 6,
 	"admin block_action kit_done (busy)": 8,
 	"admin block_action kit_show (busy)": 8,
 	"admin page_load /searches (busy)": 5,
@@ -326,6 +328,8 @@ describe("admin", () => {
 		const { site: s } = await busySite({ articles: 300, faqs: 120, categories: 12 });
 		const result = await measure("admin page_load /insights (new site, nothing to bring over)", () => insights(s));
 		expect(fullInsights(result)).toBe(true);
+		expect(fullInsights(await measure("admin page_load /insights (new site, second load stores done)", () => insights(s)))).toBe(true);
+		expect(fullInsights(await measure("admin page_load /insights (new site, done)", () => insights(s)))).toBe(true);
 	});
 
 	it("page_load /searches", async () => {

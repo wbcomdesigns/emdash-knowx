@@ -51,6 +51,9 @@ export async function buildCounter(ctx: Ctx, b: Budget, collection: string, id: 
 		ctx.storage.feedback.count({ doc_helpful: `${id}:yes` }),
 		ctx.storage.feedback.count({ doc_helpful: `${id}:no` }),
 	]);
+	// ponytail: a vote landing between the counts and the create finds no record to update, so the
+	// record misses it (one call wide, once per article, at its first tally). Upgrade path: count
+	// again after the create and apply the difference, if a site ever reports it.
 	spend(b);
 	const title = asString(asRecord(item.data).title) || item.slug || "";
 	const made = await ctx.storage[COUNTERS].compareAndSet(id, null, newCounter(id, yes, no, title));
@@ -90,10 +93,20 @@ export async function applyDelta(ctx: Ctx, id: string, change: { yes: number; no
 	return done.applied ? counterOf(id, done.data) : null;
 }
 
+/** Rows read past `limit`, so rows skipped for having no title still leave a full list. */
+const WEAK_EXTRA = 5;
+
 /**
- * Least helpful articles: more No than Yes, most No first. One query. Each row carries its title.
+ * Least helpful articles: more No than Yes, most No first. One query. A row with no stored title
+ * takes it from `titles` (a page of published articles the caller read); a row still without one is
+ * an article that is no longer published (trashed or unpublished), so it is left out.
  */
-export async function weakArticles(ctx: Ctx, limit = 10): Promise<Counter[]> {
-	const found = await ctx.storage[COUNTERS].query({ where: { net: { gt: 0 } }, orderBy: { no: "desc" }, limit });
-	return found.items.map((item) => counterOf(item.id, item.data)).filter((row): row is Counter => row !== null);
+export async function weakArticles(ctx: Ctx, limit = 10, titles: Map<string, string> = new Map()): Promise<Counter[]> {
+	const found = await ctx.storage[COUNTERS].query({ where: { net: { gt: 0 } }, orderBy: { no: "desc" }, limit: limit + WEAK_EXTRA });
+	return found.items
+		.map((item) => counterOf(item.id, item.data))
+		.filter((row): row is Counter => row !== null)
+		.map((row) => (row.title ? row : { ...row, title: titles.get(row.doc) || "" }))
+		.filter((row) => row.title)
+		.slice(0, limit);
 }

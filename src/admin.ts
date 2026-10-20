@@ -15,7 +15,7 @@ import {
 	type KnowxSettings,
 } from "./settings";
 import { readStats, type SiteStats } from "./stats";
-import { upgradeDone, upgradeState, upgradeStep, type Upgrade } from "./upgrade";
+import { upgradeDone, upgradeFinished, upgradeStep, type Upgrade } from "./upgrade";
 import { asBoolean, asRecord, asString } from "./util";
 import { COUNTERS, counterOf, weakArticles, type Counter } from "./votes";
 
@@ -111,9 +111,6 @@ function guestBlocks(ctx: PluginContext, guestWrites: boolean): Block[] {
 
 const searchesLink = (label = "Open Searches") => ({ type: "link", label, target: { kind: "plugin-page", path: "/searches" } });
 
-/** Calls the full Insights page makes after the settings read (see renderInsights). */
-const INSIGHTS_CALLS = 6;
-
 /**
  * Insights. Call budget (Cloudflare, 9): the settings (one call, done by the caller), the content
  * types and one page of articles, then either the FAQ check (no articles yet) or the site record,
@@ -121,8 +118,9 @@ const INSIGHTS_CALLS = 6;
  * Six calls after the settings, so an action that writes one setting first still fits. Top
  * searches and searches with no results are on their own page (Searches).
  *
- * `step`: run one step of bringing 0.1.x data over (page loads only). A step that found work
- * shows its progress instead of the page; the next load continues.
+ * `step`: run one step of bringing 0.1.x data over (page loads only, until it is finished). A step
+ * that found work shows its progress instead of the page; the next load continues. One that found
+ * none leaves the page five calls (see upgradeStep).
  */
 export async function renderInsights(
 	ctx: PluginContext,
@@ -131,9 +129,9 @@ export async function renderInsights(
 	opts: { toast?: Toast; guestWrites?: boolean; step?: boolean } = {},
 ): Promise<BlockResponse> {
 	const top: Block[] = [{ type: "header", text: "Insights" }, ...kitBlocks(ctx, settings), ...guestBlocks(ctx, opts.guestWrites !== false)];
-	let state = upgradeState(settings);
-	if (opts.step && !upgradeDone(state)) {
-		const result = await upgradeStep(ctx, state, used, INSIGHTS_CALLS, settings.collection);
+	let state: Upgrade | null = null;
+	if (opts.step && !upgradeFinished(settings)) {
+		const result = await upgradeStep(ctx, used, settings.collection);
 		if (result.worked) return { blocks: [...top, ...upgradeBlocks(result.state)], toast: opts.toast };
 		used = result.used;
 		state = result.state;
@@ -174,10 +172,10 @@ export async function renderInsights(
 	// No published article, no vote to show: the two vote tables keep their empty states.
 	if (status.articleCount > 0) {
 		spend(b, 2);
-		weak = (await weakArticles(ctx).catch(() => null))?.map((row) => (row.title ? row : { ...row, title: status.titles.get(row.doc) || "" })) ?? null;
+		weak = await weakArticles(ctx, 10, status.titles).catch(() => null);
 		comments = await commentRows(ctx, b, status, weak ?? []).catch(() => null);
 	}
-	const progress = upgradeDone(state) || !(state.days || state.counted) ? [] : [{ type: "context", text: `Votes from KnowX 0.1 are still being counted (${state.counted} so far). Each time Insights opens it counts more.` }];
+	const progress = !state?.counted || upgradeDone(state) ? [] : [{ type: "context", text: `Votes from KnowX 0.1 are still being counted (${state.counted} so far). Each time Insights opens it counts more.` }];
 	return {
 		blocks: [...top, ...progress, ...firstSteps, insightStats(status, stats), ...voteBlocks(weak, comments, status.articleCount > 0), ...searchBlocks()],
 		toast: opts.toast,
@@ -288,7 +286,7 @@ function voteBlocks(weak: Counter[] | null, comments: Array<{ article: string; c
 	if (read && (!weak || !comments)) return [{ type: "empty", title: "Helpfulness could not be loaded", description: "Try again in a moment." }];
 	weak ??= [];
 	comments ??= [];
-	const weakRows = weak.map((row) => ({ article: row.title || "Help article", no: String(row.no), yes: String(row.yes) }));
+	const weakRows = weak.map((row) => ({ article: row.title, no: String(row.no), yes: String(row.yes) }));
 	return [
 		{ type: "header", text: "Least helpful articles" },
 		weakRows.length
@@ -595,7 +593,7 @@ export async function renderDashboard(ctx: PluginContext): Promise<BlockResponse
 	let weakest = "";
 	try {
 		const worst = (await weakArticles(ctx, 1))[0];
-		if (worst) weakest = worst.title || "Help article";
+		if (worst) weakest = worst.title;
 	} catch {
 		weakest = "";
 	}

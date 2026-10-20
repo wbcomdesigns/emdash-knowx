@@ -31,7 +31,7 @@ Fits Cloudflare's 10 requests per plugin call. Not merged, tagged or published. 
 - `feedback` rows gain `title` and `commented` (indexed) for Recent comments.
 - Settings read with one `ctx.settings.list`. `kit_pages_done` moved from kv "1" to a setting holding the version (the card comes back after each update, like WB Polls).
 - New admin page `/searches` (Top searches, Searches with no results). Insights keeps stats, chart, least helpful, comments.
-- 0.1.x data comes over a step per Insights load (`src/upgrade.ts`: days, votes, titles; state in setting `upgrade_0_2`).
+- 0.1.x data comes over a step per Insights load (`src/upgrade.ts`: days, votes, titles; state in kv `state:upgrade_0_2`, each step claimed with a compare-and-set before it writes, so a double click or two tabs count once; setting `upgrade_0_2` = `{ done: true }` when finished).
 - `tests/bridge-budget.test.ts`: every entry pinned, all 9 or fewer, KNOWN_OVER empty. `tests/release-0-2-0.test.ts`: 0.1.5-shaped upgrade, unpublished vote refused, setup card wording, kit done sticks.
 - Kit unchanged: the 0.1.5 kit works on the 0.2.0 engine and the other way round.
 
