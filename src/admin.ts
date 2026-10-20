@@ -118,9 +118,9 @@ const searchesLink = (label = "Open Searches") => ({ type: "link", label, target
  * Six calls after the settings, so an action that writes one setting first still fits. Top
  * searches and searches with no results are on their own page (Searches).
  *
- * `step`: run one step of bringing 0.1.x data over (page loads only, until it is finished). A step
- * that found work shows its progress instead of the page; the next load continues. One that found
- * none leaves the page five calls (see upgradeStep).
+ * `step`: run one step of bringing 0.1.x data over (page loads only, until it is finished). Until
+ * the last step is done the progress card shows instead of the page; the next load continues. A
+ * site with nothing to bring over gets the page at once, with five calls left (see upgradeStep).
  */
 export async function renderInsights(
 	ctx: PluginContext,
@@ -129,12 +129,10 @@ export async function renderInsights(
 	opts: { toast?: Toast; guestWrites?: boolean; step?: boolean } = {},
 ): Promise<BlockResponse> {
 	const top: Block[] = [{ type: "header", text: "Insights" }, ...kitBlocks(ctx, settings), ...guestBlocks(ctx, opts.guestWrites !== false)];
-	let state: Upgrade | null = null;
 	if (opts.step && !upgradeFinished(settings)) {
-		const result = await upgradeStep(ctx, used, settings.collection);
+		const result = await upgradeStep(ctx, used, settings);
 		if (result.worked) return { blocks: [...top, ...upgradeBlocks(result.state)], toast: opts.toast };
 		used = result.used;
-		state = result.state;
 	}
 	const b = budget(used);
 	spend(b, 2);
@@ -175,9 +173,8 @@ export async function renderInsights(
 		weak = await weakArticles(ctx, 10, status.titles).catch(() => null);
 		comments = await commentRows(ctx, b, status, weak ?? []).catch(() => null);
 	}
-	const progress = !state?.counted || upgradeDone(state) ? [] : [{ type: "context", text: `Votes from KnowX 0.1 are still being counted (${state.counted} so far). Each time Insights opens it counts more.` }];
 	return {
-		blocks: [...top, ...progress, ...firstSteps, insightStats(status, stats), ...voteBlocks(weak, comments, status.articleCount > 0), ...searchBlocks()],
+		blocks: [...top, ...firstSteps, insightStats(status, stats), ...voteBlocks(weak, comments, status.articleCount > 0), ...searchBlocks()],
 		toast: opts.toast,
 	};
 }

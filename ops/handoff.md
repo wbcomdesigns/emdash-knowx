@@ -1,4 +1,4 @@
-# Handoff: KnowX (2026-10-20, 0.2.0 in review)
+# Handoff: KnowX (2026-10-20, 0.2.0 published, 0.2.1 in review)
 
 You are the one agent for this repo. Read this, then work.
 
@@ -23,7 +23,18 @@ You are the one agent for this repo. Read this, then work.
 
 `#17` (in-text block) was dropped: a sandboxed registry package cannot ship `portableTextBlocks`.
 
-## 0.2.0 (branch `0.2.0`, issue #48, milestone 0.2.0)
+## 0.2.1 (branch `0.2.1`, milestone 0.2.1)
+
+Not merged, tagged or published.
+
+- #52: after 0.1.5 to 0.2.0 Insights showed "None yet" on the first loads. Cause: a step that found nothing to do (no `day:` keys; or no vote rows left while titles were still to name) returned `worked: false`, so the page rendered from records not yet brought over. Fix in `src/upgrade.ts`: the first load looks for 0.1.x data (`day:` keys, a vote row with no `commented`); none stores `done` and renders the page, some stores setting `upgrade_0_2 = { started: true }` and shows the card. After that every load shows the card until `upgradeDone`. Test: `tests/release-0-2-1.test.ts` (small lab-shaped seed, with and without day keys, and a site that began on 0.2.0).
+- #51: `site-kit/components/Helpful.astro` has an inline script that keeps a Yes or No click made before the kit script binds (button gets `aria-busy`); the kit script sends it once after wiring. Kit changed: owners copy it again.
+- #50 (rate:* kv keys never removed) left open: no bounded cleanup fits a small step (kv list is unbounded, one delete per call). Needs its own design.
+- Budget: new site first load 9 (unchanged) and its second load now 6 (was 9); every other entry unchanged.
+
+Still to do before publish: Sonnet re-check of #52 on the Node lab (registry 0.1.5 small seed, update to this build, open Insights repeatedly) and #51 on the Cloudflare testbed, independent Opus review of `git diff v0.2.0..0.2.1`, owner's publish call. "Cloudflare: not supported yet" stays.
+
+## 0.2.0 (published 2026-10-20, issue #48, milestone 0.2.0)
 
 Fits Cloudflare's 10 requests per plugin call. Not merged, tagged or published. What changed:
 

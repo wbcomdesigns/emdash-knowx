@@ -1,3 +1,10 @@
+## 0.2.1
+
+After updating from 0.1.x, Insights shows its upgrade progress until it is done.
+
+- Fix      - Insights no longer shows "None yet" while votes from 0.1.x are still being brought over.
+- Fix      - A Yes or No click before the page script loads is kept and sent. Copy the kit again.
+
 ## 0.2.0
 
 Every help page, vote, search and admin screen now fits Cloudflare's limit of 10 requests per plugin call.
@@ -23,7 +30,7 @@ To copy the kit for this version, from your site's root folder:
 ```bash
 kit="$(mktemp -d)" &&
   git clone --depth 1 \
-    --branch v0.2.0 \
+    --branch v0.2.1 \
     https://github.com/wbcomdesigns/emdash-knowx \
     "$kit/emdash-knowx" &&
   "$kit/emdash-knowx/scripts/add-to-site.sh" .

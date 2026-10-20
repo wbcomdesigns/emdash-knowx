@@ -59,6 +59,23 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 	</aside>
 </section>
 
+<script is:inline>
+	// On a cold load the kit script below can bind a few seconds after the buttons show. A Yes or No
+	// clicked before then is kept here (the button shows as pending) and sent once it binds.
+	if (!window.kxEarlyClicks) {
+		window.kxEarlyClicks = true;
+		document.addEventListener("click", (event) => {
+			const button = event.target instanceof Element ? event.target.closest("[data-kx-vote]") : null;
+			const root = button && button.closest("[data-kx-helpful]");
+			if (!root || root.dataset.kxReady) return;
+			root.dataset.kxQueued = button.dataset.kxVote;
+			// Only the last click is sent, so only that button shows as pending.
+			root.querySelectorAll("[data-kx-vote]").forEach((other) => other.removeAttribute("aria-busy"));
+			button.setAttribute("aria-busy", "true");
+		});
+	}
+</script>
+
 <script>
 	import { api } from "../lib/wbcom-kit";
 	import { phrase } from "../lib/knowx-strings";
@@ -235,6 +252,11 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 		voteButtons.forEach((button) => {
 			button.addEventListener("click", () => vote(button.dataset.kxVote === "yes", button));
 		});
+		// Send a click that came before this script ran (kept by the inline script above).
+		root.dataset.kxReady = "1";
+		const queued = root.querySelector<HTMLButtonElement>(`[data-kx-vote="${root.dataset.kxQueued}"]`);
+		delete root.dataset.kxQueued;
+		if (queued) void vote(queued.dataset.kxVote === "yes", queued);
 
 		commentForm?.addEventListener("submit", (event) => {
 			event.preventDefault();

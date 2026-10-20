@@ -2,6 +2,14 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.2.1] - 2026-10-20
+
+After updating from 0.1.x, Insights shows the upgrade progress until it is done. No new permission. Copy the site kit again for the vote fix.
+
+- Fix      - After updating from 0.1.x, Insights no longer shows "None yet" and "No weak articles yet" while older votes are still being brought over; it shows the progress card until every step is done.
+- Fix      - On a site with no search counts from 0.1.x, the first Insights load after the update no longer skips the progress card.
+- Fix      - A Yes or No click on Was this helpful made before the page script loaded (a cold load on Cloudflare) is kept and sent once the script runs.
+
 ## [0.2.0] - 2026-10-20
 
 Every help page, vote, search, admin screen and action now fits Cloudflare's limit of 10 requests per plugin call. No new permission. Copy the site kit again after you update.
