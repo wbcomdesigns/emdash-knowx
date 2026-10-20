@@ -34,7 +34,15 @@ Check `src/layouts/KnowXLayout.astro` points at your site's layout. See [Wording
 
 ## Insights is empty
 
-Insights fills as visitors search and vote. On a new site, search and vote once yourself in a private window, then reload Insights.
+Insights fills as visitors search and vote. On a new site, search and vote once yourself in a private window, then reload Insights. Search terms are on **KnowX, Searches**.
+
+## Insights says "Bringing over data from KnowX 0.1"
+
+The site was updated from 0.1.x. Votes and search counts from before the update are counted a step at a time, about 100 votes each time Insights opens. Press **Continue** until it says **Insights is ready**. See [Insights](../features/insights.md#after-updating-from-01x).
+
+## The help home or a category shows no content types after the kit was copied
+
+On a site whose database is not a local SQLite file (Cloudflare D1, for example) the kit cannot create the content types. Create them in the admin: [Install](../getting-started/install.md#create-the-content-types-in-the-admin).
 
 ## Help and FAQ both look selected in the menu on the FAQ page
 

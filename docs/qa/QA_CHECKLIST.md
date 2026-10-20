@@ -56,12 +56,32 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 | ID | Steps | Expected |
 | --- | --- | --- |
-| A-1 | Open Insights with no data | Every table shows an empty state |
-| A-2 | Open Insights after votes and searches | Least helpful articles by name, comments, top searches, no-result searches |
-| A-3 | Search for `<script>` as a guest, then open Insights | The term shows as plain text |
+| A-1 | Open Insights and Searches with no data | Every table shows an empty state |
+| A-2 | Open Insights after votes and searches, then Searches | Insights: least helpful articles by name, comments by article name, helpful rate, searches this week. Searches: top searches, no-result searches |
+| A-3 | Search for `<script>` as a guest, then open Searches | The term shows as plain text |
 | A-4 | Change the collection setting to one that does not exist | A clear message. Search returns nothing instead of failing |
 | A-5 | Set the contact link to a `javascript:` address | Refused. Only a path, an http(s) link or a mailto address is accepted |
-| A-6 | Open the EmDash dashboard | The KnowX card shows empty searches this week and the least helpful article, with a link to Insights |
+| A-6 | Open the EmDash dashboard | The KnowX card shows empty searches this week and the least helpful article, with links to Insights and Searches |
+| A-7 | Fresh site, kit not copied: open Insights | Setup card says the command copies the kit and, on a site with a local SQLite database, creates the content types; on any other site it says to create them in the admin as the install guide shows |
+| A-8 | Press Visitor pages are set up, reload Insights, then Show the setup steps again; update the plugin | The card is one line after the press and after the reload, comes back on Show the setup steps again, and comes back after a version change |
+| A-9 | Site updated from 0.1.5 with votes, comments and a week of searches: open Insights repeatedly | "Bringing over data from KnowX 0.1" with a vote count and Continue, then "Insights is ready" with Show Insights, then the full page. Helpful rate, least helpful articles (by name), comments and the searches chart match what 0.1.5 showed. Pressing Continue twice quickly, or Insights open in two tabs, counts nothing twice. A trashed article never shows in Least helpful |
+| A-10 | Site with more than 100 published articles: open Insights | Articles shows 100+ |
+| A-11 | Searches: Find, Load more, Previous page, First page; leave and open Searches again | Each works; reopening starts at page 1 with an empty find box |
+
+## Cloudflare (call budget, every release)
+
+Run on the Cloudflare testbed with the plugin from the registry, the kit from the release tag, and a busy help centre (300 articles, 12 top-level categories with icons, a few hundred votes and searches). Every case must answer without "Too many subrequests" and without "Something went wrong". Then repeat C-1 to C-3 on the Node lab.
+
+| ID | Steps | Expected |
+| --- | --- | --- |
+| C-1 | Guest opens an article, votes Yes, then No with a comment | Thanks, then the comment box, then the comment thanks. Reload: the tally line counts the vote once, as No |
+| C-2 | Member does the same on another article | Same, counted once by account |
+| C-3 | Guest searches for a known word, a new word and nonsense; open Searches | All three listed; nonsense under Searches with no results; Insights searches this week up by three |
+| C-4 | Help home with 12 product cards; FAQ page; a category | Each loads, each card has its icon |
+| C-5 | Insights load (and Continue until the full page on an updated site), Visitor pages are set up, reload, Show the setup steps again | Each loads; "set up" stays after the reload |
+| C-6 | Searches: load, Find, Load more, Previous page, First page | Each loads |
+| C-7 | Settings: load, save each tab (Feedback, Still need help, Search, Product icons with 12 icons) | Each saves with a success message and shows the saved value |
+| C-8 | Dashboard KnowX card | Loads with empty searches this week and the least helpful article by name |
 
 ## Presentation, every screen
 
@@ -81,3 +101,4 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 - Starter site header stays light in dark. The kit must still paint its own `.kx` canvas (T-80). A 0.1.1 bounce on #20 was that Topics and article body used light text on the host page.
 - The collection setting is internal. A-4 is proven by setting `collection` to `no-such` in tests, not from the Settings screen.
 - A block inside article text needs a trusted install. It is not in this registry release.
+- Cloudflare: each plugin call may make 10 requests to the site. `tests/bridge-budget.test.ts` measures every route, admin page and action on a busy seed and fails over 9. It does not run on Cloudflare itself, so C-1 to C-8 are walked there every release.

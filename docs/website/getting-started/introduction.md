@@ -19,7 +19,7 @@ Guests search, read, and vote when the host gives EmDash the visitor's address (
 
 ## What you get
 
-- **Insights**: searches this week, searches that found nothing, top searches, the least helpful articles and recent comments.
+- **Insights** and **Searches**: searches this week, the helpful rate, the least helpful articles and recent comments; top searches and searches that found nothing.
 - **A dashboard card** with empty searches this week and the least helpful article.
 - **Settings** for feedback, the contact link, what search covers, and an icon for each product.
 

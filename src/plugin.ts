@@ -1,7 +1,7 @@
 import type { SandboxedPlugin } from "emdash/plugin";
 
 import { handleAdmin } from "./admin";
-import { collectionStatus, MEMBER, SIGN_IN } from "./core";
+import { articleCollection, collectionStatus, MEMBER, SIGN_IN } from "./core";
 import { pageMetadata } from "./metadata";
 import {
 	guestWriter,
@@ -24,13 +24,16 @@ const plugin: SandboxedPlugin = {
 		health: {
 			public: true,
 			handler: async (routeCtx, ctx) => {
-				const status = await collectionStatus(ctx);
+				// Three calls: the collection setting, the content types, one page of articles.
+				const status = await collectionStatus(ctx, await articleCollection(ctx));
 				return {
 					ok: true,
 					plugin: ctx.plugin.id,
 					version: ctx.plugin.version,
 					collectionExists: status.collectionExists,
 					articleCount: status.articleCount,
+					// True when there are more than articleCount (the count stops at one page, 100).
+					articleCountMore: status.articleMore,
 					faqCollectionExists: status.faqCollectionExists,
 					// False when the host gives EmDash no visitor address: guests cannot vote here,
 					// and searches are not counted. Signed-in members can still vote.

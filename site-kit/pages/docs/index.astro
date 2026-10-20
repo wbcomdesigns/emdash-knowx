@@ -28,7 +28,13 @@ const cards = (products.items.length ? products.items : top.map((term) => ({
 	label: term.label,
 	description: term.description || "",
 	icon: "book",
-}))).map((item) => ({ ...item, count: countFor(item.slug) }));
+}))).map((item) => ({
+	...item,
+	// Articles filed directly in this category, as its page lists them; sub-categories are named
+	// apart, so a parent whose articles sit in sub-categories does not read as nearly empty.
+	count: countFor(item.slug),
+	subtopics: top.find((term) => term.slug === item.slug)?.children?.length ?? 0,
+}));
 
 const articles = docs.entries;
 ---
@@ -54,7 +60,7 @@ const articles = docs.entries;
 									) : null}
 									<strong>{item.label}</strong>
 									{item.description ? <span class="wb-muted">{item.description}</span> : null}
-									<span class="kx-count">{kx.articlesCount(item.count)}</span>
+									<span class="kx-count">{item.subtopics ? `${kx.articlesCount(item.count)}, ${kx.subtopicsCount(item.subtopics)}` : kx.articlesCount(item.count)}</span>
 								</a>
 							</li>
 						))}

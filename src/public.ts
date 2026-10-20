@@ -1,10 +1,12 @@
 import type { PluginContext } from "emdash/plugin";
 
-import { articleCollection, RATE_LIMITED, rateLimited } from "./core";
+import { articleCollection, budget, BUSY, RATE_LIMITED, rateCheck, spend, type Budget } from "./core";
 import { listTopLevelCategories, useProductLayer } from "./products";
 import { loadSettings } from "./settings";
+import { addTotals, bumpDay } from "./stats";
 import { asBoolean, asNumber, asRecord, asString, nowIso } from "./util";
-import { normaliseTerm, requestAddress, skipSearchTerm, visitorHash } from "./visitor";
+import { normaliseTerm, requestAddress, skipSearchTerm, visitorHash, visitorSalt } from "./visitor";
+import { applyDelta, buildCounter, COUNTERS, countRows, getCounter, voteDelta } from "./votes";
 
 type RouteCtx = { input: unknown; requestMeta?: unknown; user?: unknown; request?: unknown };
 
@@ -81,22 +83,32 @@ function bodyTooLarge(routeCtx: RouteCtx): boolean {
  * is counted on its own and a later call can never clear it. Anyone could add an empty term by
  * searching for it, so a forged report gains nothing; hiding a real empty search is no longer
  * possible. Empty searches drop off the list after EMPTY_WINDOW_MS.
+ *
+ * Call budget (Cloudflare, 9): salt 1-2, hourly limit 1-2, the term 1-2, the day counter 1-4, and
+ * the trim of a full log 3-4 only when it fits. Every optional step spends from one budget, so no
+ * burst, race or full log takes the call past it. The answer never depends on a later write.
  */
 export async function handleLogSearch(routeCtx: RouteCtx, ctx: PluginContext, writer: Writer | null) {
 	if (!writer) return GUEST_UNAVAILABLE;
 	if (bodyTooLarge(routeCtx)) return fail("VALIDATION_ERROR");
 	const raw = asRecord(routeCtx.input);
 	if (asString(raw.website) || asString(raw.hp)) return { ok: true };
-	const who = await visitorHash(ctx, writer);
-	if (await rateLimited(ctx, `search:${who}`)) return RATE_LIMITED;
 	const term = normaliseTerm(raw.q);
 	if (skipSearchTerm(term)) return { ok: true };
+	const salt = await visitorSalt(ctx);
+	// A parallel first request made the salt at the same moment: this search is not counted.
+	if (!salt) return { ok: true };
+	const b = budget(salt.fresh ? 2 : 1);
+	const who = await visitorHash(salt.salt, writer);
+	b.used += salt.fresh ? 1 : 2;
+	const rate = await rateCheck(ctx, `search:${who}`, salt.fresh);
+	if (rate === "limited") return RATE_LIMITED;
+	if (rate === "busy") return { ok: true };
 	const empty = asNumber(raw.found) === 0;
-	await bumpDay(ctx, empty);
 	const lastAt = nowIso();
-	const existing = asRecord(await ctx.storage.searches.get(term));
-	if (!existing.term) {
-		await ctx.storage.searches.put(term, {
+	try {
+		spend(b);
+		const created = await ctx.storage.searches.compareAndSet(term, null, {
 			term,
 			count: 1,
 			empty: empty ? 1 : 0,
@@ -104,28 +116,22 @@ export async function handleLogSearch(routeCtx: RouteCtx, ctx: PluginContext, wr
 			lastAt,
 			...(empty ? { lastEmptyAt: lastAt } : {}),
 		});
-		await trimSearchLog(ctx);
-		return { ok: true };
-	}
-	const set: Record<string, unknown> = { lastAt };
-	if (empty) Object.assign(set, { found: false, lastEmptyAt: lastAt });
-	const updated = await ctx.storage.searches.updateIf(term, {
-		where: {},
-		delta: { count: { inc: 1 }, ...(empty ? { empty: { inc: 1 } } : {}) },
-		set,
-	});
-	if (!updated.applied) {
-		await ctx.storage.searches.put(term, {
-			...existing,
-			term,
-			count: (asNumber(existing.count) ?? 0) + 1,
-			empty: emptyCount(existing) + (empty ? 1 : 0),
-			...set,
-		});
+		if (!created.applied && spend(b)) {
+			const set: Record<string, unknown> = { lastAt };
+			if (empty) Object.assign(set, { found: false, lastEmptyAt: lastAt });
+			await ctx.storage.searches.updateIf(term, {
+				where: {},
+				delta: { count: { inc: 1 }, ...(empty ? { empty: { inc: 1 } } : {}) },
+				set,
+			});
+		}
+		await bumpDay(ctx, b, empty);
+		if (created.applied) await trimSearchLog(ctx, b);
+	} catch {
+		/* the search itself is never affected by its log */
 	}
 	return { ok: true };
 }
-
 /** Searches of a row that found nothing. A 0.1.4 row only has found: false and its count. */
 export function emptyCount(row: Record<string, unknown>): number {
 	const counted = asNumber(row.empty);
@@ -142,93 +148,106 @@ export function lastEmptyAt(row: Record<string, unknown>): string {
  * Keep the log at SEARCH_LOG_CAP rows. First go terms nobody searched in the last EMPTY_WINDOW_MS,
  * oldest first, so old busy terms cannot hold the log for good. Then the least searched terms, the
  * oldest of them first, so a flood of made-up one-off terms only pushes out other one-off terms and
- * never a term with recent real traffic. Both orders are done by the storage query itself
- * (it returns at most 100 rows and breaks ties by id, so the order must not rely on ties).
+ * never a term with recent real traffic. Both orders are done by the storage query itself (it
+ * returns at most 100 rows and breaks ties by id, so the order must not rely on ties).
+ *
+ * Runs after a new term is stored, only with the calls left in the budget (3 or 4): the count, one
+ * or both queries, the delete. When they do not fit, a later new term trims; each trim removes up
+ * to 100 rows, so the log never stays far past the cap.
  */
-export async function trimSearchLog(ctx: PluginContext, cap = SEARCH_LOG_CAP): Promise<void> {
+export async function trimSearchLog(ctx: PluginContext, b: Budget, cap = SEARCH_LOG_CAP): Promise<void> {
+	if (!spend(b, 3)) return;
 	const total = await ctx.storage.searches.count();
 	if (total <= cap) return;
 	const excess = Math.min(100, total - cap);
 	const since = new Date(Date.now() - EMPTY_WINDOW_MS).toISOString();
 	const stale = await ctx.storage.searches.query({ where: { lastAt: { lt: since } }, orderBy: { lastAt: "asc" }, limit: excess });
 	const victims = stale.items.map((item) => item.id);
-	if (victims.length < excess) {
+	if (victims.length < excess && spend(b)) {
 		const least = await ctx.storage.searches.query({ orderBy: { count: "asc", lastAt: "asc" }, limit: excess - victims.length });
 		victims.push(...least.items.map((item) => item.id));
 	}
-	await ctx.storage.searches.deleteMany(victims);
-}
-
-/** UTC day key for the running search counters. */
-export function dayKey(date: Date): string {
-	return `day:${date.toISOString().slice(0, 10)}`;
+	if (victims.length) await ctx.storage.searches.deleteMany(victims);
 }
 
 /**
- * One running counter per day (searches, and searches that found nothing), kept in kv and
- * updated on each logged search, so Insights totals never depend on how many terms a query reads.
+ * Yes and No for one article: one read of its stored counts. An article read for the first time
+ * gets its record from its vote rows (at most 9 calls); one that is not published is counted from
+ * its rows and nothing is stored. The title on the record is refreshed at most once a day.
  */
-// ponytail: compare-and-set with random backoff, at most DAY_TRIES tries. Proven with 40 parallel
-// writers (tests). Past that a burst can drop a count from the week total, never a search row;
-// per-writer shard keys summed on read would remove the ceiling.
-const DAY_TRIES = 60;
-
-async function bumpDay(ctx: PluginContext, empty: boolean): Promise<void> {
-	const key = dayKey(new Date());
-	for (let attempt = 0; attempt < DAY_TRIES; attempt += 1) {
-		const seen = await ctx.kv.getVersioned<string>(key);
-		const [searches, none] = (seen?.value || "0|0").split("|").map(Number);
-		const next = `${(searches || 0) + 1}|${(none || 0) + (empty ? 1 : 0)}`;
-		if ((await ctx.kv.compareAndSet(key, seen?.revision ?? null, next)).applied) return;
-		await new Promise((resolve) => setTimeout(resolve, Math.random() * Math.min(5 + attempt * 5, 50)));
-	}
-}
-
-/** Searches and empty searches per UTC day for the last `days` days, oldest first. */
-export async function dayTotals(ctx: PluginContext, days: number): Promise<Array<{ day: number; searches: number; empty: number }>> {
-	const out = [];
-	for (let i = days - 1; i >= 0; i -= 1) {
-		const date = new Date();
-		date.setUTCHours(0, 0, 0, 0);
-		date.setUTCDate(date.getUTCDate() - i);
-		const [searches, empty] = (asString(await ctx.kv.get<string>(dayKey(date))) || "0|0").split("|").map(Number);
-		out.push({ day: date.getTime(), searches: searches || 0, empty: empty || 0 });
-	}
-	return out;
-}
-
 export async function handleTally(routeCtx: RouteCtx, ctx: PluginContext) {
 	const id = asString(asRecord(routeCtx.input).id);
 	if (!id) return fail("VALIDATION_ERROR");
-	const [yes, no] = await Promise.all([
-		ctx.storage.feedback.count({ doc_helpful: `${id}:yes` }),
-		ctx.storage.feedback.count({ doc_helpful: `${id}:no` }),
-	]);
-	return { ok: true, yes, no };
+	const counter = await getCounter(ctx, id);
+	if (counter) {
+		if (Date.now() - (Date.parse(counter.titledAt) || 0) > TITLE_FRESH_MS) {
+			try {
+				const item = await ctx.content?.get(await articleCollection(ctx), id);
+				const title = asString(asRecord(item?.data).title) || item?.slug || "";
+				if (item?.status === "published" && title) {
+					await ctx.storage[COUNTERS].updateIf(id, { where: {}, set: { title, titledAt: nowIso() } });
+				}
+			} catch {
+				/* the counts are already read */
+			}
+		}
+		return { ok: true, yes: counter.yes, no: counter.no };
+	}
+	const b = budget(2);
+	const built = await buildCounter(ctx, b, await articleCollection(ctx), id);
+	return { ok: true, ...(built ?? (await countRows(ctx, id))) };
 }
 
+const TITLE_FRESH_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * One vote per visitor per article. Call budget (Cloudflare, 9): settings, the article (it must be
+ * published now: a vote on a draft, an unpublished or a trashed article is refused), the salt, the
+ * hourly limit (read and compare-and-set), the visitor's previous vote, the vote (compare-and-set,
+ * so two clicks at once never count twice), the article's counts and the site totals (deltas in
+ * SQL). The answer is ready once the vote is stored: the two count updates after it cannot fail it.
+ * An article with no stored counts yet (never read through tally) gets them from its vote rows,
+ * this vote included, the next time tally reads it; until then this vote moves no count.
+ */
 export async function handleHelpful(routeCtx: RouteCtx, ctx: PluginContext, writer: Writer | null) {
 	if (!writer) return GUEST_UNAVAILABLE;
 	const raw = asRecord(routeCtx.input);
 	const id = asString(raw.id);
 	if (!id) return fail("VALIDATION_ERROR");
-	const collection = await articleCollection(ctx);
-	const entry = await ctx.content?.get(collection, id).catch(() => null);
-	if (!entry || entry.status !== "published") return fail("NOT_FOUND");
-	const who = await visitorHash(ctx, writer);
-	if (await rateLimited(ctx, `helpful:${who}`)) return RATE_LIMITED;
-	const helpful = asBoolean(raw.helpful);
 	const settings = await loadSettings(ctx);
+	const entry = await ctx.content?.get(settings.collection, id).catch(() => null);
+	if (!entry || entry.status !== "published") return fail("NOT_FOUND");
+	const title = asString(asRecord(entry.data).title) || entry.slug || "";
+	const salt = await visitorSalt(ctx);
+	if (!salt) return BUSY;
+	const who = await visitorHash(salt.salt, writer);
+	const rate = await rateCheck(ctx, `helpful:${who}`, salt.fresh);
+	if (rate === "limited") return RATE_LIMITED;
+	if (rate === "busy") return BUSY;
+	const helpful = asBoolean(raw.helpful);
 	let comment = asString(raw.comment).slice(0, 500);
 	if (helpful || !settings.askComment) comment = "";
 	const rowId = `${id}:${who}`;
-	await ctx.storage.feedback.put(rowId, {
+	// A new salt means this visitor has no vote yet: skip the read.
+	const seen = salt.fresh ? null : await ctx.storage.feedback.getVersioned(rowId);
+	const before = seen ? asRecord(seen.value) : null;
+	const createdAt = nowIso();
+	const written = await ctx.storage.feedback.compareAndSet(rowId, seen?.revision ?? null, {
 		doc: id,
 		doc_helpful: `${id}:${helpful ? "yes" : "no"}`,
 		helpful,
 		comment,
 		visitor: who,
-		createdAt: nowIso(),
+		createdAt,
+		title,
+		commented: comment ? createdAt : "",
 	});
-	return handleTally({ input: { id } }, ctx);
+	if (!written.applied) return BUSY;
+	const change = voteDelta(before ? before.helpful === true : null, helpful);
+	if (!change.yes && !change.no) return { ok: true };
+	const after = await applyDelta(ctx, id, change);
+	// No stored counts yet: tally builds them from the rows, this vote included, and adds the totals.
+	if (!after) return { ok: true };
+	await addTotals(ctx, budget(8), change.yes, change.no).catch(() => undefined);
+	return { ok: true, yes: after.yes, no: after.no };
 }

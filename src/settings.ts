@@ -1,7 +1,7 @@
 import type { PluginContext } from "emdash/plugin";
 
-import { articleCollection, DOCS } from "./core";
-import { asBoolean, asString, asStringArray } from "./util";
+import { DOCS } from "./core";
+import { asRecord, asString, asStringArray } from "./util";
 
 export const SEARCH_COLLECTION_CAP = 5;
 
@@ -10,7 +10,15 @@ export type KnowxSettings = {
 	askComment: boolean;
 	contactUrl: string;
 	searchCollections: string[];
+	/** Plugin version for which the owner said the visitor pages are set up ("" when not). */
+	kitDone: string;
+	/** How far bringing data over from 0.1.x has got (see upgrade.ts). */
+	upgrade: Record<string, unknown>;
 };
+
+/** Settings keys that are plugin state, never shown on the Settings page. */
+export const KIT_DONE = "kit_pages_done";
+export const UPGRADE = "upgrade_0_2";
 
 export type CollectionChoice = {
 	slug: string;
@@ -40,19 +48,20 @@ export function parseContactUrl(raw: unknown): { ok: true; value: string } | { o
 	return { ok: false };
 }
 
+/** Every setting in one call (ctx.settings.list), so no path pays one call per setting. */
 export async function loadSettings(ctx: PluginContext): Promise<KnowxSettings> {
-	const collection = await articleCollection(ctx);
-	const chosen = asStringArray(await ctx.settings.get<string>("search_collections"));
-	const contactRaw = await ctx.settings.get<string>("contact_url");
+	const all = new Map((await ctx.settings.list()).map((row) => [row.key, row.value]));
+	const collection = asString(all.get("collection")) || DOCS;
+	const chosen = asStringArray(all.get("search_collections"));
+	// Checked again on read: a link saved before a stricter check (0.1.4) is never served.
+	const contact = parseContactUrl(all.get("contact_url"));
 	return {
 		collection,
-		askComment: (await ctx.settings.get<boolean>("ask_comment")) !== false,
-		// Checked again on read: a link saved before a stricter check (0.1.4) is never served.
-		contactUrl: (() => {
-			const parsed = parseContactUrl(contactRaw);
-			return parsed.ok ? parsed.value : "";
-		})(),
+		askComment: all.get("ask_comment") !== false,
+		contactUrl: contact.ok ? contact.value : "",
 		searchCollections: chosen.length ? chosen : [collection],
+		kitDone: asString(all.get(KIT_DONE)),
+		upgrade: asRecord(all.get(UPGRADE)),
 	};
 }
 

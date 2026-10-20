@@ -60,6 +60,7 @@ describe("guests need a visitor address (#40)", () => {
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
 		const ipv4 = guest("203.0.113.10");
+		await site.call("tally", { id: ids[0] });
 		for (let i = 0; i < 8; i += 1) {
 			expect(await site.call("helpful", { id: ids[0], helpful: i % 2 === 0 }, ipv4)).toMatchObject({ ok: true });
 		}
@@ -74,6 +75,7 @@ describe("guests need a visitor address (#40)", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		await site.call("tally", { id: ids[0] });
 		await site.call("helpful", { id: ids[0], helpful: true }, guest("2001:db8:1:2::1"));
 		const second = await site.call("helpful", { id: ids[0], helpful: false }, guest("2001:db8:1:2:abcd::7"));
 		expect(second).toMatchObject({ ok: true, yes: 0, no: 1 });
@@ -83,6 +85,7 @@ describe("guests need a visitor address (#40)", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		await site.call("tally", { id: ids[0] });
 		expect(await site.call("helpful_member", { id: ids[0], helpful: true }, asMember())).toMatchObject({ ok: true, yes: 1 });
 		// EmDash answers 401 before the handler on a real site; the handler refuses too.
 		expect(await site.call("helpful_member", { id: ids[0], helpful: true }, noAddress)).toMatchObject({ error: { code: "SIGN_IN_REQUIRED" } });
@@ -108,14 +111,20 @@ describe("guests need a visitor address (#40)", () => {
 		expect(withAddress).not.toContain("Guests cannot vote on this host");
 	});
 
-	it("parallel first requests share one visitor salt", async () => {
+	it("parallel first requests share one visitor salt, and one visitor's parallel votes count once", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const { ids } = await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
+		await site.call("tally", { id: ids[0] });
 		const visitor = guest("198.51.100.20");
-		await Promise.all([0, 1, 2, 3, 4].map(() => site.call("helpful", { id: ids[0], helpful: false }, visitor)));
-		// With a salt race each request would hash the visitor differently and count separately.
+		const first = await Promise.all([0, 1, 2, 3, 4].map(() => site.call("helpful", { id: ids[0], helpful: false }, visitor)));
+		// With a salt race each request would hash the visitor differently and count separately. A
+		// request that loses a race stores nothing and answers "try again".
+		for (const result of first) expect([true, "BUSY"]).toContain((result as { ok?: boolean }).ok || (result as { error?: { reason?: string } }).error?.reason);
 		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ yes: 0, no: 1 });
+		const again = await Promise.all([0, 1, 2, 3, 4].map(() => site.call("helpful", { id: ids[0], helpful: true }, visitor)));
+		expect(again.some((result) => (result as { ok?: boolean }).ok)).toBe(true);
+		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ yes: 1, no: 0 });
 	});
 });
 
@@ -126,7 +135,7 @@ describe("search log (#41)", () => {
 		await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
 		await site.call("log_search", { q: "refund policy", found: 0 }, guest("198.51.100.30"));
 		await site.call("log_search", { q: "refund policy", found: 999 }, guest("198.51.100.31"));
-		const page = await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" });
+		const page = await site.call("admin", { type: "page_load", page: "/searches" }, { method: "POST" });
 		const tables = (page as { blocks: Array<{ type: string; page_action_id?: string; rows?: Array<Record<string, string>> }> }).blocks;
 		const empty = tables.find((block) => block.page_action_id === "empty_page");
 		expect(empty?.rows).toEqual([{ term: "refund policy", times: "1" }]);
@@ -150,8 +159,11 @@ describe("search log (#41)", () => {
 		await put("zzz old one-off", 1, ago(10)); // the oldest one-off: goes next despite its late name
 		await put("aaa newer one-off", 1, ago(2)); // a newer one-off with an early name: stays
 		await put("mmm newest one-off", 1, ago(1));
+		// A live site: its salt and counters exist (the very first search on a site makes them, and
+		// leaves the trim to the next new term to stay inside the call budget).
+		await site.call("log_search", { q: "busy 0001", found: 1 }, guest("198.51.100.59"));
 		const exists = async (term: string) => {
-			const blocks = (await site.call("admin", { type: "form_submit", action_id: "top_find", page: "/insights", values: { find: term } }, { method: "POST" })) as {
+			const blocks = (await site.call("admin", { type: "form_submit", action_id: "top_find", page: "/searches", values: { find: term } }, { method: "POST" })) as {
 				blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }>;
 			};
 			return Boolean(blocks.blocks.find((block) => block.page_action_id === "top_page")?.rows?.some((row) => row.term === term));
@@ -176,7 +188,7 @@ describe("search log (#41)", () => {
 		}
 		for (let i = 0; i < 30; i += 1) await site.call("log_search", { q: `junk term ${i}`, found: 0 }, guest(`198.51.100.${i + 1}`));
 		const find = async (term: string) =>
-			((await site.call("admin", { type: "form_submit", action_id: "top_find", page: "/insights", values: { find: term } }, { method: "POST" })) as {
+			((await site.call("admin", { type: "form_submit", action_id: "top_find", page: "/searches", values: { find: term } }, { method: "POST" })) as {
 				blocks: Array<{ page_action_id?: string; rows?: Array<Record<string, string>> }>;
 			}).blocks.find((block) => block.page_action_id === "top_page")?.rows || [];
 		expect(await find("junk")).toEqual([]);
@@ -184,7 +196,7 @@ describe("search log (#41)", () => {
 		expect((await find("real 4999")).find((row) => row.term === "real 4999")?.times).toBe("4");
 	}, 300_000);
 
-	it("empty searches stay on Insights behind 4800 busy terms, and the week counts every search", async () => {
+	it("empty searches stay on Searches behind 4800 busy terms, and the week counts every search", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt);
@@ -197,13 +209,13 @@ describe("search log (#41)", () => {
 			await site.rt.fixtures.plugin.storage("searches", `busy ${i}`, { term: `busy ${i}`, count: 9, empty: 0, found: true, lastAt: later });
 		}
 		for (let i = 0; i < 120; i += 1) await site.call("log_search", { q: `found ${i}`, found: 2 }, guest(`203.0.113.${(i % 200) + 1}`));
-		const page = (await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" })) as {
+		const searches = (await site.call("admin", { type: "page_load", page: "/searches" }, { method: "POST" })) as {
 			blocks: Array<Record<string, unknown>>;
 		};
-		const empty = page.blocks.find((block) => block.page_action_id === "empty_page") as { rows: Array<Record<string, string>> } | undefined;
-		expect(JSON.stringify(page.blocks.slice(-6))).toContain("empty_page");
+		const empty = searches.blocks.find((block) => block.page_action_id === "empty_page") as { rows: Array<Record<string, string>> } | undefined;
+		expect(JSON.stringify(searches.blocks.slice(-2))).toContain("empty_page");
 		expect(empty?.rows.map((row) => row.term).sort()).toEqual(["export to csv", "refund policy"]);
-		const text = JSON.stringify(page);
+		const text = JSON.stringify(await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" }));
 		expect(text).toContain('"label":"Searches this week","value":"122"');
 		expect(text).toContain('"label":"Searches with no results","value":"2"');
 		const card = JSON.stringify(await site.call("admin", { widget: "insights" }, { method: "POST" }));
@@ -214,6 +226,8 @@ describe("search log (#41)", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt);
+		// A live site already has its salt; parallel first-ever requests are a separate case.
+		await site.rt.fixtures.plugin.kv("visitor_salt", "live-site-salt");
 		const results = await Promise.all(
 			Array.from({ length: 40 }, (_, i) => site.call("log_search", { q: `burst ${i}`, found: i % 2 }, guest(`198.51.100.${i + 1}`))),
 		);
@@ -231,23 +245,23 @@ describe("search log (#41)", () => {
 			await site.rt.fixtures.plugin.storage("searches", `t${String(i).padStart(2, "0")}`, { term: `t${String(i).padStart(2, "0")}`, count: 100 - i, empty: 0, found: true, lastAt: new Date().toISOString() });
 		}
 		type Page = { blocks: Array<{ page_action_id?: string; next_cursor?: string; rows?: Array<Record<string, string>>; elements?: Array<{ action_id?: string }> }> };
-		const first = (await site.call("admin", { type: "page_load", page: "/insights" }, { method: "POST" })) as Page;
+		const first = (await site.call("admin", { type: "page_load", page: "/searches" }, { method: "POST" })) as Page;
 		const table = (page: Page) => page.blocks.find((block) => block.page_action_id === "top_page");
 		const firstRows = table(first)?.rows?.map((row) => row.term);
 		expect(firstRows?.[0]).toBe("t00");
-		const two = (await site.call("admin", { type: "block_action", action_id: "top_page", page: "/insights", value: { cursor: table(first)?.next_cursor } }, { method: "POST" })) as Page;
+		const two = (await site.call("admin", { type: "block_action", action_id: "top_page", page: "/searches", value: { cursor: table(first)?.next_cursor } }, { method: "POST" })) as Page;
 		expect(table(two)?.rows?.[0].term).toBe("t25");
 		expect(JSON.stringify(two)).toContain('"action_id":"top_prev"');
-		const three = (await site.call("admin", { type: "block_action", action_id: "top_page", page: "/insights", value: { cursor: table(two)?.next_cursor } }, { method: "POST" })) as Page;
+		const three = (await site.call("admin", { type: "block_action", action_id: "top_page", page: "/searches", value: { cursor: table(two)?.next_cursor } }, { method: "POST" })) as Page;
 		expect(table(three)?.rows?.[0].term).toBe("t50");
-		const back = (await site.call("admin", { type: "block_action", action_id: "top_prev", page: "/insights" }, { method: "POST" })) as Page;
+		const back = (await site.call("admin", { type: "block_action", action_id: "top_prev", page: "/searches" }, { method: "POST" })) as Page;
 		expect(table(back)?.rows?.[0].term).toBe("t25");
-		const reset = (await site.call("admin", { type: "block_action", action_id: "top_first", page: "/insights" }, { method: "POST" })) as Page;
+		const reset = (await site.call("admin", { type: "block_action", action_id: "top_first", page: "/searches" }, { method: "POST" })) as Page;
 		expect(table(reset)?.rows?.map((row) => row.term)).toEqual(firstRows);
 		expect(JSON.stringify(reset)).not.toContain('"action_id":"top_prev"');
 	});
 
-	it("reopening Insights starts Top searches again at page 1 with no find text", async () => {
+	it("reopening Searches starts Top searches again at page 1 with no find text", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt);
@@ -256,7 +270,7 @@ describe("search log (#41)", () => {
 			await site.rt.fixtures.plugin.storage("searches", term, { term, count: 200 - i, empty: 0, found: true, lastAt: new Date().toISOString() });
 		}
 		type Page = { blocks: Array<{ type?: string; text?: string; page_action_id?: string; next_cursor?: string; rows?: Array<Record<string, string>> }> };
-		const call = async (input: Record<string, unknown>) => (await site.call("admin", { page: "/insights", ...input }, { method: "POST" })) as Page;
+		const call = async (input: Record<string, unknown>) => (await site.call("admin", { page: "/searches", ...input }, { method: "POST" })) as Page;
 		const table = (page: Page) => page.blocks.find((block) => block.page_action_id === "top_page");
 		const more = async (page: Page) => call({ type: "block_action", action_id: "top_page", value: { cursor: table(page)?.next_cursor } });
 		const label = (page: Page) => page.blocks.find((block) => block.type === "context" && /at a time/.test(block.text || ""))?.text || "";

@@ -105,8 +105,9 @@ describe("admin insights", () => {
 		expect(body).not.toMatch(/FAQ collection is ready/);
 		expect(body).toMatch(/No weak articles yet/);
 		expect(body).toMatch(/No comments yet/);
-		expect(body).toMatch(/No searches yet/);
-		expect(body).toMatch(/No empty searches yet/);
+		const searches = texts(await site.rt.admin.loadPage("/searches"));
+		expect(searches).toMatch(/No searches yet/);
+		expect(searches).toMatch(/No empty searches yet/);
 	});
 
 	it("shows a clear message when the collection setting points at a missing type", async () => {
@@ -139,9 +140,10 @@ describe("settings", () => {
 		expect(page).toContain("Still need help");
 		expect(page).not.toContain("Each group saves on its own.");
 		expect(page).not.toContain("(search off)");
-		// Insights has only the Top searches find box, no settings form.
-		const forms = (await site.rt.admin.loadPage("/insights")).blocks.filter((block) => block.type === "form");
-		expect(forms.map((block) => (block as { block_id?: string }).block_id)).toEqual(["top_find"]);
+		// Insights has no form; Searches has only the Top searches find box, no settings form.
+		const forms = (path: string) => site.rt.admin.loadPage(path).then((page) => page.blocks.filter((block) => block.type === "form").map((block) => (block as { block_id?: string }).block_id));
+		expect(await forms("/insights")).toEqual([]);
+		expect(await forms("/searches")).toEqual(["top_find"]);
 
 		const admin = (input: Record<string, unknown>) => site.call("admin", input);
 		const contact = await admin({
@@ -305,7 +307,7 @@ describe("config", () => {
 });
 
 describe("search log", () => {
-	it("counts a term, skips an email and a honeypot, and lists them on Insights", async () => {
+	it("counts a term, skips an email and a honeypot, and lists them on Searches", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withDocs(site.rt, [{ title: "Welcome", slug: "welcome" }]);
@@ -315,7 +317,7 @@ describe("search log", () => {
 		expect(await site.call("log_search", { q: "secret-spam", found: 0, website: "http://x" }, guest("198.51.100.1"))).toMatchObject({
 			ok: true,
 		});
-		const page = JSON.stringify(await site.rt.admin.loadPage("/insights"));
+		const page = JSON.stringify(await site.rt.admin.loadPage("/searches"));
 		expect(page).toContain("billing plan");
 		expect(page).toContain('"times":"2"');
 		expect(page).not.toContain("help@example.com");
@@ -333,6 +335,8 @@ describe("helpful", () => {
 		const gone = await site.call("helpful", { id: "missing", helpful: true }, guest("198.51.100.1"));
 		expect(gone).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
 
+		// The kit reads the counts when the article opens, before any vote.
+		expect(await site.call("tally", { id: ids[0] })).toMatchObject({ ok: true, yes: 0, no: 0 });
 		const yes = await site.call("helpful", { id: ids[0], helpful: true }, guest("198.51.100.1"));
 		expect(yes).toMatchObject({ ok: true, yes: 1, no: 0 });
 		const flipped = await site.call("helpful", { id: ids[0], helpful: false, comment: "Missing steps" }, guest("198.51.100.1"));
@@ -372,6 +376,7 @@ describe("dashboard card", () => {
 		expect(texts(empty)).toMatch(/No empty searches this week/);
 		expect(texts(empty)).toMatch(/No article has more No votes than Yes yet/);
 
+		await site.call("tally", { id: ids[0] });
 		await site.call("helpful", { id: ids[0], helpful: false, comment: "Need steps" }, guest("198.51.100.1"));
 		await site.call("log_search", { q: "refund policy", found: 0 }, guest("198.51.100.1"));
 		const card = (await site.call("admin", { widget: "insights" })) as { blocks: unknown[] };

@@ -38,8 +38,18 @@
 			"indexes": [
 				"doc",
 				"doc_helpful",
-				"createdAt"
+				"createdAt",
+				"commented"
 			]
+		},
+		"article_votes": {
+			"indexes": [
+				"net",
+				"no"
+			]
+		},
+		"stats": {
+			"indexes": []
 		},
 		"searches": {
 			"indexes": [
@@ -64,6 +74,12 @@
 				"path": "/insights",
 				"label": "Insights",
 				"icon": "chart",
+				"group": "KnowX"
+			},
+			{
+				"path": "/searches",
+				"label": "Searches",
+				"icon": "search",
 				"group": "KnowX"
 			},
 			{
