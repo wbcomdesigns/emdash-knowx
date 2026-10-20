@@ -46,10 +46,10 @@ Every article ends with **Yes** and **No**. After a **No**, the reader can write
 
 You want to spend your time on the articles that matter.
 
-1. Open **KnowX**, then **Insights** once a week.
+1. Open **KnowX**, then **Searches** once a week.
 2. Read **Searches with no results**. These are things people wanted and did not find. Write an article, or add the word to an existing one.
-3. Read **Least helpful articles**. These have more No votes than Yes votes. Rewrite them, then read **Recent comments** for the missing detail.
-4. Use **Top searches** to check that each popular word has a good article.
+3. Open **Insights** and read **Least helpful articles**. These have more No votes than Yes votes. Rewrite them, then read **Recent comments** for the missing detail.
+4. On **Searches**, use **Top searches** to check that each popular word has a good article.
 
 The EmDash dashboard also shows a KnowX card with empty searches this week and the least helpful article. Insights counts words only, never who searched. See [Insights](../features/insights.md).
 

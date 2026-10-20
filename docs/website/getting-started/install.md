@@ -42,7 +42,7 @@ After every plugin update, run step 2 again with the new tag.
 
 ## What each step does for KnowX
 
-**Step 1.** EmDash lists what KnowX asks for: reading your content, your content types and your categories. It never changes your content. A **KnowX** group with **Insights** and **Settings** appears in the admin menu. Insights opens with a **Set up visitor pages** card that shows the same command for the version you installed.
+**Step 1.** EmDash lists what KnowX asks for: reading your content, your content types and your categories. It never changes your content. A **KnowX** group with **Insights**, **Searches** and **Settings** appears in the admin menu. Insights opens with a **Set up visitor pages** card that shows the same command for the version you installed.
 
 **Step 2.** Each run clones into a new folder, so it works the same after an update. Any kit file you edited (the wording file, a style, a page) is saved next to it as `<file>.bak-YYYYMMDD` before the new one is copied, and the script lists those backups; files you never touched are replaced quietly. The script copies:
 
@@ -61,12 +61,22 @@ It then creates the content types. When your site keeps its database in a local 
 npx emdash seed .emdash/knowx-seed.json --no-content
 ```
 
+The seed writes to a local SQLite file only. On a site whose database lives elsewhere (Cloudflare D1, for example), [create the content types in the admin](#create-the-content-types-in-the-admin) instead.
+
 | Content type | Fields | Used for |
 | --- | --- | --- |
 | Help articles (`docs`) | Title, Excerpt, Content, Applies to version | Articles |
 | FAQs (`faq`) | Question, Answer | The FAQ page |
 
 plus a **Help categories** taxonomy for topics. Search is turned on for both. Anything you already have is left alone, and the seed never changes your menus. Leave out `--no-content` to also add four starter help categories you can rename.
+
+### Create the content types in the admin
+
+Only for a site whose database is not a local SQLite file. Use exactly these slugs: KnowX and the kit look for them.
+
+1. **Content Types**, **New Content Type**: label **Help articles**, slug `docs`, URL Pattern `/docs/{slug}`. Tick **Drafts**, **Revisions**, **Preview** and **Search**. Add the fields **Title** (slug `title`, Short text, required), **Excerpt** (`excerpt`, Long text), **Content** (`content`, Rich Text) and **Applies to version** (`applies_to_version`, Short text). Turn on **Searchable** for Title, Excerpt and Content.
+2. **Content Types**, **New Content Type**: label **FAQs**, slug `faq`, URL Pattern `/docs/faq/{slug}`. Tick the same four options. Add **Question** (slug `title`, Short text, required) and **Answer** (`answer`, Rich Text), both **Searchable**.
+3. **Taxonomies**, **New Taxonomy**: label **Help categories**, slug `doc_category`, **Hierarchical**, for **Help articles**.
 
 **Step 3.** The help pages need nothing pasted. The script prints one optional pair of lines: a help search box on every blog post, for `src/pages/posts/[slug].astro`:
 

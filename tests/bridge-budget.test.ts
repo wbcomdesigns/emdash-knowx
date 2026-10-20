@@ -26,7 +26,7 @@ const MEASURED: Record<string, number> = {
 	"route tally (title older than a day)": 4,
 	"route helpful (guest, No with comment)": 9,
 	"route helpful (first guest on the site)": 8,
-	"route helpful (article not counted yet)": 7,
+	"route helpful (article not counted yet)": 8,
 	"route helpful_member (change vote)": 9,
 	"admin page_load /insights (0.1.5 data, worst step)": 7,
 	"admin page_load /insights (0.1.5 votes, no searches, worst step)": 7,
@@ -265,13 +265,12 @@ describe("public routes", () => {
 		expect(result).toMatchObject({ ok: true, yes: 1, no: 0 });
 	});
 
-	it("helpful, an article never read through tally is counted and the vote asked again", async () => {
+	it("helpful, an article never read through tally: the vote is stored and tally counts it", async () => {
 		const { site: s, ids } = await busySite({ articles: 1 });
 		await warmSalt(s);
 		const result = await measure("route helpful (article not counted yet)", () => s.call("helpful", { id: ids[0], helpful: true }, fromGuest));
-		// Nothing of the vote was stored: the kit shows "could not be saved, try again".
-		expect(result).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR", reason: "BUSY" } });
-		expect(await s.call("helpful", { id: ids[0], helpful: true }, fromGuest)).toMatchObject({ ok: true, yes: 1, no: 0 });
+		expect(result).toMatchObject({ ok: true });
+		expect(await s.call("tally", { id: ids[0] }, { method: "GET" })).toMatchObject({ ok: true, yes: 1, no: 0 });
 	});
 });
 

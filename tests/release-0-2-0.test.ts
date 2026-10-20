@@ -79,6 +79,20 @@ describe("0.1.5 data on the 0.2.0 engine (#48)", () => {
 	});
 });
 
+describe("votes need a published article (#48)", () => {
+	it("refuses a vote on a draft, even one with stored counts, and stores nothing", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const { ids } = await withDocs(site.rt, [{ title: "Hidden", status: "draft" }]);
+		const id = ids[0]!;
+		await site.rt.fixtures.plugin.storage("article_votes", id, { doc: id, yes: 0, no: 0, net: 0, title: "Hidden", titledAt: "" });
+		expect(await site.call("helpful", { id, helpful: false, comment: "x" }, guest("198.51.100.40"))).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+		expect(await site.call("helpful_member", { id, helpful: true }, { method: "POST", user: ana })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+		expect(await site.rt.inspect.storage.list("feedback")).toHaveLength(0);
+		expect(await site.rt.inspect.storage.get("article_votes", id)).toMatchObject({ yes: 0, no: 0 });
+	});
+});
+
 describe("Insights setup card on Cloudflare (#48)", () => {
 	it("never says the command creates the content types on every host", async () => {
 		const site = await openSite();

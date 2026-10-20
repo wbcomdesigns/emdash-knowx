@@ -2,6 +2,24 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.2.0] - 2026-10-20
+
+Every help page, vote, search, admin screen and action now fits Cloudflare's limit of 10 requests per plugin call. No new permission. The site kit is unchanged.
+
+- New      - Each article keeps its Yes and No counts, updated in the same step as the vote, so a page reads them in one request on any size of site.
+- New      - A Searches screen holds Top searches and Searches with no results; Insights keeps the counts, the chart, the least helpful articles and the recent comments.
+- New      - Votes, comments and search counts from 0.1.x are brought over a step at a time as Insights opens, with a progress card and Continue.
+- Improve  - The site keeps its helpful rate and its searches per day in one record, so Insights and the dashboard card open in a few requests.
+- Improve  - Settings reads every setting in one request and saves each tab with one write.
+- Improve  - The help home reads every product icon in one request.
+- Improve  - Articles on Insights and the health check count up to 100 and then show 100+.
+- Fix      - On Cloudflare a guest or member vote no longer shows "Something went wrong" after the vote was saved.
+- Fix      - On Cloudflare Insights, Settings, every Settings save, the dashboard card and Top searches paging no longer fail with too many requests.
+- Fix      - On Cloudflare a search at the 5000-term log cap is counted without passing the limit, and a burst of searches never retries past it.
+- Fix      - The Insights setup card no longer says the command creates the content types on every host; on a site without a local SQLite database it points to creating them in the admin.
+- Fix      - Visitor pages are set up is saved with the plugin version and stays after a reload.
+- Security - Every vote checks that its article is published at that moment; a vote on a draft, unpublished or trashed article is refused and nothing is stored.
+
 ## [0.1.5] - 2026-10-19
 
 Copy the site kit again after you update: run the command from the install guide with the new tag.

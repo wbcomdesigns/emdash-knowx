@@ -201,12 +201,13 @@ export async function handleTally(routeCtx: RouteCtx, ctx: PluginContext) {
 const TITLE_FRESH_MS = 24 * 60 * 60 * 1000;
 
 /**
- * One vote per visitor per article. Call budget (Cloudflare, 9): settings, the article's counts,
- * the salt, the hourly limit (read and compare-and-set), the visitor's previous vote, the vote
- * (compare-and-set, so two clicks at once never count twice), the article's counts and the site
- * totals (deltas in SQL). The answer is ready once the vote is stored: the two count updates after
- * it cannot fail it. An article with no stored counts yet (never read through tally) gets them
- * now and the visitor is asked to click again: nothing of the vote is stored in that call.
+ * One vote per visitor per article. Call budget (Cloudflare, 9): settings, the article (it must be
+ * published now: a vote on a draft, an unpublished or a trashed article is refused), the salt, the
+ * hourly limit (read and compare-and-set), the visitor's previous vote, the vote (compare-and-set,
+ * so two clicks at once never count twice), the article's counts and the site totals (deltas in
+ * SQL). The answer is ready once the vote is stored: the two count updates after it cannot fail it.
+ * An article with no stored counts yet (never read through tally) gets them from its vote rows,
+ * this vote included, the next time tally reads it; until then this vote moves no count.
  */
 export async function handleHelpful(routeCtx: RouteCtx, ctx: PluginContext, writer: Writer | null) {
 	if (!writer) return GUEST_UNAVAILABLE;
@@ -214,11 +215,9 @@ export async function handleHelpful(routeCtx: RouteCtx, ctx: PluginContext, writ
 	const id = asString(raw.id);
 	if (!id) return fail("VALIDATION_ERROR");
 	const settings = await loadSettings(ctx);
-	const counter = await getCounter(ctx, id);
-	if (!counter) {
-		const built = await buildCounter(ctx, budget(2), settings.collection, id);
-		return built ? BUSY : fail("NOT_FOUND");
-	}
+	const entry = await ctx.content?.get(settings.collection, id).catch(() => null);
+	if (!entry || entry.status !== "published") return fail("NOT_FOUND");
+	const title = asString(asRecord(entry.data).title) || entry.slug || "";
 	const salt = await visitorSalt(ctx);
 	if (!salt) return BUSY;
 	const who = await visitorHash(salt.salt, writer);
@@ -240,17 +239,15 @@ export async function handleHelpful(routeCtx: RouteCtx, ctx: PluginContext, writ
 		comment,
 		visitor: who,
 		createdAt,
-		title: counter.title,
+		title,
 		commented: comment ? createdAt : "",
 	});
 	if (!written.applied) return BUSY;
 	const change = voteDelta(before ? before.helpful === true : null, helpful);
-	if (!change.yes && !change.no) return { ok: true, yes: counter.yes, no: counter.no };
+	if (!change.yes && !change.no) return { ok: true };
 	const after = await applyDelta(ctx, id, change);
+	// No stored counts yet: tally builds them from the rows, this vote included, and adds the totals.
+	if (!after) return { ok: true };
 	await addTotals(ctx, budget(8), change.yes, change.no).catch(() => undefined);
-	return {
-		ok: true,
-		yes: after?.yes ?? Math.max(0, counter.yes + change.yes),
-		no: after?.no ?? Math.max(0, counter.no + change.no),
-	};
+	return { ok: true, yes: after.yes, no: after.no };
 }

@@ -8,7 +8,7 @@ KnowX turns an EmDash site into a help center. Visitors search for an answer, br
 - **FAQ.** Its own page, with FAQ data for search engines.
 - **Was this helpful.** Yes or No on each article. After a No you can ask for a short comment.
 - **Still need help.** A contact button after an empty search and after a No vote. You set one link. Hidden when that setting is empty.
-- **Insights.** Weak articles by name, comments as plain text, top searches, searches that found nothing.
+- **Insights and Searches.** Weak articles by name, comments as plain text, top searches, searches that found nothing.
 - **Dashboard card.** Empty searches this week, and the least helpful article.
 
 ## How it fits together

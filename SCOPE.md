@@ -133,7 +133,7 @@ Ask for nothing more without the owner's agreement: every capability is shown to
 
 ### `feedback`
 
-Row id: `<docId>:<visitorHash>`. One vote per visitor per article. Indexes: `doc`, `doc_helpful`, `createdAt`.
+Row id: `<docId>:<visitorHash>`. One vote per visitor per article, written with compare-and-set so two clicks at once count once. Indexes: `doc`, `doc_helpful`, `createdAt`, `commented` (0.2.0).
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -143,6 +143,32 @@ Row id: `<docId>:<visitorHash>`. One vote per visitor per article. Indexes: `doc
 | `comment` | string | Optional, up to 500 characters, only after a no |
 | `visitor` | string | SHA-256 of the IP plus a per-site salt. Never the IP itself |
 | `createdAt` | string | ISO time |
+| `title` | string | Article title when the vote was cast (0.2.0), so Recent comments never reads each article |
+| `commented` | string | `createdAt` when the row has a comment, else empty (0.2.0). Recent comments queries it. A 0.1.x row has none until the upgrade step adds it |
+
+### `article_votes` (0.2.0)
+
+Stored vote counts, so a page shows Yes and No in one read and Insights lists the least helpful articles in one query (Cloudflare allows 10 requests per plugin call). Row id: the article entry id. Indexes: `net`, `no`. Vote rows in `feedback` stay the record.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `doc` | string | Article entry id |
+| `yes`, `no` | number | Votes, kept in step by every vote with deltas applied in SQL |
+| `net` | number | `no` minus `yes`. Above 0 is a least helpful article |
+| `title` | string | The article's title. `tally` refreshes it at most once a day |
+| `titledAt` | string | ISO time of the last title refresh |
+
+Made by `tally` the first time an article is read (the kit reads it on every article page before a vote is possible), from the article's vote rows. Every vote checks that the article is published at that moment (a draft, unpublished or trashed article answers `NOT_FOUND` and nothing is stored). A vote on a published article with no record yet is stored and moves no count; `tally` then builds the record from the rows, that vote included.
+
+### `stats` (0.2.0)
+
+One record, id `site`. No indexes.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `yes`, `no` | number | Every vote on the site: the sum of the article records. The helpful rate |
+| `d0`..`d15`, `s0`..`s15`, `e0`..`e15` | string, number | A ring of 16 UTC days: the date a slot holds, its searches, its searches that found nothing. Day number n uses slot n % 16 |
+| `since` | string | When the record was made |
 
 ### `product_icons`
 
@@ -157,15 +183,25 @@ Row id: the category term id. Indexes: `slug`, `icon`.
 
 ### `searches`
 
-Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `found`, `count`, `lastAt`.
+Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `found`, `count`, `lastAt`, `term`, `empty`, `lastEmptyAt`. At most 5000 rows: a new term trims the log, stale terms first, then the least searched oldest first.
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `term` | string |  |
 | `count` | number | Times searched |
-| `found` | boolean | Whether the last search returned anything |
-| `results` | number | Result count of the last search |
+| `empty` | number | Times it found nothing |
+| `found` | boolean | False once any search of it found nothing |
 | `lastAt` | string | ISO time |
+| `lastEmptyAt` | string | ISO time of the last search that found nothing |
+
+### Key-value records
+
+| Key | Holds |
+| --- | --- |
+| `visitor_salt` | Per-site salt for visitor hashes |
+| `rate:helpful:<hash>`, `rate:search:<hash>` | Hour start and writes this hour. One read and one compare-and-set, no retry |
+| `view:top` | Find text and page cursors of Top searches on the Searches screen |
+| `day:YYYY-MM-DD` | 0.1.x day counters. Read once by the upgrade step into `stats`, never written by 0.2.0 |
 
 ## Settings
 
@@ -175,6 +211,10 @@ Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `f
 | `ask_comment` | boolean | `true` | Ask for a comment after a No vote |
 | `contact_url` | string | (empty) | A page path, a full link, or a `mailto:` address. Empty hides the prompt |
 | `search_collections` | string | `docs` | Content types the help search covers. Set with tick-boxes |
+| `kit_pages_done` | string | (empty) | Plugin version for which the owner pressed Visitor pages are set up (0.2.0; 0.1.x kept "1" in kv). Internal |
+| `upgrade_0_2` | object | (none) | How far bringing 0.1.x data over has got: `days`, `votes`, `titles`, `after`, `counted`, `titleCursor`. Internal |
+
+All settings are read in one call (`ctx.settings.list`).
 
 ## Routes
 
@@ -182,11 +222,12 @@ Base: `/_emdash/api/plugins/knowx/<name>`.
 
 | Route | Who | Methods | Input | Returns |
 | --- | --- | --- | --- | --- |
-| `health` | public | GET | - | `ok`, version, whether the collection exists, article count |
+| `health` | public | GET | - | `ok`, version, whether the collection exists, article count up to 100 and `articleCountMore`, `guestWrites` |
 | `products` | public | GET | - | Top-level categories with name, description and icon. One item means the kit shows no product layer |
 | `log_search` | public | POST | `q`, `found` (count), honeypot field | Records the term and whether it found anything. Rate limited per visitor. The search itself is EmDash's, run by the kit page |
-| `helpful` | public | POST | `id`, `helpful`, `comment` | Saved. One vote per visitor per article, rate limited per IP |
-| `tally` | public | GET | `id` | `yes` and `no` counts for one article |
+| `helpful` | public | POST | `id`, `helpful`, `comment` | Saved, with `yes` and `no` after the vote. One vote per visitor per article, rate limited per IP |
+| `helpful_member` | member | POST | `id`, `helpful`, `comment` | The same for a signed-in member, counted by account |
+| `tally` | public | GET | `id` | `yes` and `no` counts for one article, from its stored record |
 | `admin` | admin | POST | Block Kit | Insights and settings |
 
 `member` means a private route with `permission: MEMBER`. `admin` means a private route with no permission set. A `public` route never receives a user.
@@ -199,7 +240,8 @@ None.
 
 | Page | What it shows |
 | --- | --- |
-| `/insights` | Stats, least helpful articles, recent feedback comments, top searches, searches with no results |
+| `/insights` | Setup card, stats (articles, searches this week, searches with no results, helpful rate), searches chart, least helpful articles, recent feedback comments. While 0.1.x data is brought over: a progress card with Continue |
+| `/searches` | Top searches (find, 25 a page, previous and first page), searches with no results (the 50 most frequent in 30 days). Added in 0.2.0 |
 | `/settings` | Contact link, ask for a comment after a No, what search covers, product icons for top-level categories |
 
 ## Site kit
@@ -232,6 +274,17 @@ A screen is done when every state listed here has been seen in a browser at 1440
 | Helpful widget | Idle, thanks after yes, comment box after no, already voted, error |
 | Admin insights | Each table has an empty state. Search terms and comments shown as plain text |
 | Still need help | A calm panel with one button, after no results and after a No vote. Absent when the owner has not set a contact link |
+
+## Cloudflare call budget (0.2.0)
+
+On Cloudflare each route, hook and admin action gets 10 requests to the site, and every `ctx.storage`, `ctx.kv`, `ctx.settings`, `ctx.content`, `ctx.schema` and `ctx.taxonomies` call is one. `tests/bridge-budget.test.ts` measures the worst case of every entry point on a busy seed and fails over 9. Rules every change keeps:
+
+- Read every setting with one `ctx.settings.list`. Read many rows with `getMany`, write them with `putMany`.
+- Counts are stored and moved with deltas in the same call as the write (`article_votes`, `stats`). Never count rows on a read path, never page through rows on one.
+- No retry loops. A compare-and-set that loses answers "try again" (votes) or skips the count (search log), and stores nothing.
+- Optional work (the day counter, the log trim) spends from one budget and stops when it is used up.
+- The answer never depends on a call after the write: a vote's answer is ready once the vote is stored.
+- Work too big for one call (bringing 0.1.x data over) runs a step per Insights load with an honest progress card.
 
 ## Risks and open questions
 
