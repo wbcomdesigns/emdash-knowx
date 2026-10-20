@@ -69,6 +69,8 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 			const root = button && button.closest("[data-kx-helpful]");
 			if (!root || root.dataset.kxReady) return;
 			root.dataset.kxQueued = button.dataset.kxVote;
+			// Only the last click is sent, so only that button shows as pending.
+			root.querySelectorAll("[data-kx-vote]").forEach((other) => other.removeAttribute("aria-busy"));
 			button.setAttribute("aria-busy", "true");
 		});
 	}
