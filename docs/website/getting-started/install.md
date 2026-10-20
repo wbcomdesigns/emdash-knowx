@@ -25,7 +25,7 @@ Checked on EmDash 1.3.1 with the `blog` template on Node.
    ```bash
    kit="$(mktemp -d)" &&
      git clone --depth 1 \
-       --branch v0.2.0 \
+       --branch v0.2.1 \
        https://github.com/wbcomdesigns/emdash-knowx \
        "$kit/emdash-knowx" &&
      "$kit/emdash-knowx/scripts/add-to-site.sh" .

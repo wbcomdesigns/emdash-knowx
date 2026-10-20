@@ -212,7 +212,7 @@ Row id: The normalised term (lowercase, trimmed, 80 characters max). Indexes: `f
 | `contact_url` | string | (empty) | A page path, a full link, or a `mailto:` address. Empty hides the prompt |
 | `search_collections` | string | `docs` | Content types the help search covers. Set with tick-boxes |
 | `kit_pages_done` | string | (empty) | Plugin version for which the owner pressed Visitor pages are set up (0.2.0; 0.1.x kept "1" in kv). Internal |
-| `upgrade_0_2` | object | (none) | `{ done: true }` once 0.1.x data is brought over. Progress (`days`, `votes`, `titles`, `after`, `counted`, `titleCursor`) is in kv `state:upgrade_0_2`. Internal |
+| `upgrade_0_2` | object | (none) | `{ started: true }` once the first Insights load found 0.1.x data (0.2.1), `{ done: true }` once it is brought over, or at once when there was none. Insights shows the progress card on every load in between. Progress (`days`, `votes`, `titles`, `after`, `counted`, `titleCursor`) is in kv `state:upgrade_0_2`. Internal |
 
 All settings are read in one call (`ctx.settings.list`).
 

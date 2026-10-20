@@ -31,8 +31,7 @@ const MEASURED: Record<string, number> = {
 	"admin page_load /insights (0.1.5 data, worst step)": 9,
 	"admin page_load /insights (0.1.5 votes, no searches, worst step)": 9,
 	"admin page_load /insights (busy, counted)": 7,
-	"admin page_load /insights (new site, nothing to bring over)": 9,
-	"admin page_load /insights (new site, second load stores done)": 9,
+	"admin page_load /insights (new site, nothing to bring over, stores done)": 9,
 	"admin page_load /insights (new site, done)": 6,
 	"admin block_action kit_done (busy)": 8,
 	"admin block_action kit_show (busy)": 8,
@@ -326,9 +325,8 @@ describe("admin", () => {
 
 	it("page_load /insights on a new site shows the full page at once", async () => {
 		const { site: s } = await busySite({ articles: 300, faqs: 120, categories: 12 });
-		const result = await measure("admin page_load /insights (new site, nothing to bring over)", () => insights(s));
+		const result = await measure("admin page_load /insights (new site, nothing to bring over, stores done)", () => insights(s));
 		expect(fullInsights(result)).toBe(true);
-		expect(fullInsights(await measure("admin page_load /insights (new site, second load stores done)", () => insights(s)))).toBe(true);
 		expect(fullInsights(await measure("admin page_load /insights (new site, done)", () => insights(s)))).toBe(true);
 	});
 

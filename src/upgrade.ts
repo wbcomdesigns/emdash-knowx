@@ -24,7 +24,10 @@ import { COUNTERS, counterOf, newCounter } from "./votes";
  * 3. `titles`: the counts made in step 2 get their article's title, read from the published
  *    articles 100 at a time (two pages per load), so Insights and the dashboard name them.
  *
- * A step that finds nothing to do (a new install) lets the full page render in the same load.
+ * Before any step, the first Insights load on 0.2.x looks for 0.1.x data (day counters, vote rows).
+ * With none (a new install) it stores `done` and the full page renders in the same load. With some
+ * it stores `started` and shows the progress card; from then on every load shows the card until the
+ * last step is done, so the page never renders from records that are still being brought over.
  */
 export const STATE = "state:upgrade_0_2";
 
@@ -52,12 +55,13 @@ export type StepResult = { state: Upgrade; used: number; worked: boolean };
 
 /**
  * Run one step. `used` is what the caller spent before it (the settings read). Worst case 9 calls
- * for a step that worked. A step that found nothing returns at 4 calls or fewer, leaving the page
- * its five calls; the sixth (titles for 0.1.x comments) is budget-guarded and has nothing to name
- * before the votes step marked those comments.
+ * for a step that worked. `worked: false` (render the page) only when the upgrade is done, at 4
+ * calls or fewer, leaving the page its five calls; the sixth (titles for 0.1.x comments) is
+ * budget-guarded.
  */
-export async function upgradeStep(ctx: PluginContext, used: number, collection: string): Promise<StepResult> {
+export async function upgradeStep(ctx: PluginContext, used: number, settings: KnowxSettings): Promise<StepResult> {
 	const b = budget(used);
+	if (settings.upgrade.started !== true) return firstLook(ctx, b);
 	spend(b);
 	const seen = await ctx.kv.getVersioned<Record<string, unknown>>(STATE);
 	const state = parseUpgrade(seen?.value);
@@ -66,9 +70,30 @@ export async function upgradeStep(ctx: PluginContext, used: number, collection: 
 		await finish(ctx, b);
 		return { state, used: b.used, worked: false };
 	}
-	if (!state.days) return daysStep(ctx, b, state, rev);
-	if (!state.votes) return votesStep(ctx, b, state, rev);
-	return titlesStep(ctx, b, state, rev, collection);
+	const step = !state.days
+		? await daysStep(ctx, b, state, rev)
+		: !state.votes
+			? await votesStep(ctx, b, state, rev)
+			: await titlesStep(ctx, b, state, rev, settings.collection);
+	// Until every step is done the records are incomplete: show the card, never the page.
+	return { ...step, worked: step.worked || !upgradeDone(step.state) };
+}
+
+const NOTHING: Upgrade = { days: true, votes: true, titles: true, after: "", counted: 0, titleCursor: "" };
+
+/** Anything from 0.1.x? Day counters or a vote row with no `commented` (0.2.x votes all write it). */
+async function firstLook(ctx: PluginContext, b: Budget): Promise<StepResult> {
+	spend(b, 2);
+	const [days, votes] = await Promise.all([ctx.kv.list("day:"), ctx.storage.feedback.query({ where: { commented: null }, limit: 1 })]);
+	if (!days.length && !votes.items.length) {
+		await finish(ctx, b);
+		return { state: NOTHING, used: b.used, worked: false };
+	}
+	spend(b, 2);
+	await ctx.settings.set(UPGRADE, { started: true });
+	// A site that began on 0.2.0 has its progress here already.
+	const seen = await ctx.kv.get<Record<string, unknown>>(STATE);
+	return { state: parseUpgrade(seen), used: b.used, worked: true };
 }
 
 async function claim(ctx: PluginContext, b: Budget, rev: string | null, next: Upgrade): Promise<boolean> {

@@ -21,7 +21,7 @@ Checked on EmDash 1.3.1 with the `blog` template on Node.
    ```bash
    kit="$(mktemp -d)" &&
      git clone --depth 1 \
-       --branch v0.2.0 \
+       --branch v0.2.1 \
        https://github.com/wbcomdesigns/emdash-knowx \
        "$kit/emdash-knowx" &&
      "$kit/emdash-knowx/scripts/add-to-site.sh" .
@@ -31,4 +31,4 @@ Checked on EmDash 1.3.1 with the `blog` template on Node.
 4. In Admin, Menus, add `/docs/` and `/docs/faq/`.
 5. Open KnowX, Insights, then add articles in Content, Help articles.
 
-Run step 2 again after every update. Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v0.2.0/docs/website/getting-started/install.md
+Run step 2 again after every update. Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v0.2.1/docs/website/getting-started/install.md

@@ -28,7 +28,7 @@ Each list has a short empty state when there is nothing yet. Every vote and ever
 
 ## After updating from 0.1.x
 
-Votes, comments and search counts from before 0.2.0 are brought over the first few times you open **Insights**. Until that is done Insights shows **Bringing over data from KnowX 0.1** with how many votes are counted so far, and **Continue**. Each step handles about 100 votes, because each request a plugin makes may do only a little work. When it says **Insights is ready**, press **Show Insights**. Nothing is lost while it runs: new votes and searches are counted as usual.
+Votes, comments and search counts from before 0.2.0 are brought over the first few times you open **Insights**. Until that is done, every time it opens Insights shows **Bringing over data from KnowX 0.1** with how many votes are counted so far, and **Continue**, never the empty counts. A site with nothing from 0.1.x goes straight to the full page. Each step handles about 100 votes, because each request a plugin makes may do only a little work. When it says **Insights is ready**, press **Show Insights**. Nothing is lost while it runs: new votes and searches are counted as usual.
 
 ## Dashboard card
 
