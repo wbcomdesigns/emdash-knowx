@@ -41,34 +41,41 @@ export function useProductLayer(products: ProductCard[]): boolean {
 	return products.length > 1;
 }
 
+/**
+ * Top-level help categories with their icons, sorted by name. Two calls: the terms, then every
+ * stored icon at once (one read per category was 13 calls for 12 categories).
+ */
 export async function listTopLevelCategories(ctx: PluginContext): Promise<ProductCard[]> {
 	const terms = (await ctx.taxonomies?.getTerms(DOC_CATEGORY)) ?? [];
 	const top = terms.filter((term) => !term.parentId);
-	const cards: ProductCard[] = [];
-	for (const term of top) {
-		const stored = asRecord(await ctx.storage.product_icons.get(term.id));
-		const icon = asString(stored.icon);
-		cards.push({
-			id: term.id,
-			slug: term.slug,
-			label: term.label,
-			description: asString(asRecord(term.data).description),
-			icon: isProductIcon(icon) ? icon : DEFAULT_PRODUCT_ICON,
-		});
-	}
-	return cards.sort((a, b) => a.label.localeCompare(b.label));
+	const stored = top.length ? await ctx.storage.product_icons.getMany(top.map((term) => term.id)) : new Map();
+	return top
+		.map((term) => {
+			const icon = asString(asRecord(stored.get(term.id)).icon);
+			return {
+				id: term.id,
+				slug: term.slug,
+				label: term.label,
+				description: asString(asRecord(term.data).description),
+				icon: isProductIcon(icon) ? icon : DEFAULT_PRODUCT_ICON,
+			};
+		})
+		.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export async function saveProductIcon(ctx: PluginContext, termId: string, icon: string): Promise<boolean> {
-	if (!isProductIcon(icon)) return false;
-	const terms = (await ctx.taxonomies?.getTerms(DOC_CATEGORY)) ?? [];
-	const term = terms.find((item) => item.id === termId && !item.parentId);
-	if (!term) return false;
-	await ctx.storage.product_icons.put(term.id, {
-		slug: term.slug,
-		label: term.label,
-		icon,
-		updatedAt: nowIso(),
-	});
-	return true;
+/**
+ * Store the icons picked on the Settings page in one write. `products` is the list the page was
+ * built from (top-level categories only); a field for any other id is ignored. Returns how many
+ * icons were valid.
+ */
+export async function saveProductIcons(ctx: PluginContext, products: ProductCard[], values: Record<string, unknown>): Promise<number> {
+	const now = nowIso();
+	const rows = [];
+	for (const product of products) {
+		const icon = asString(values[`icon__${product.id}`]);
+		if (!isProductIcon(icon)) continue;
+		rows.push({ id: product.id, data: { slug: product.slug, label: product.label, icon, updatedAt: now } });
+	}
+	if (rows.length) await ctx.storage.product_icons.putMany(rows);
+	return rows.length;
 }

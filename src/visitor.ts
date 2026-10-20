@@ -12,15 +12,18 @@ async function sha256(text: string): Promise<string> {
 	return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** One salt per site. Compare-and-set, so two first requests at once cannot each write their own. */
-export async function visitorSalt(ctx: Ctx): Promise<string> {
-	for (let attempt = 0; attempt < 4; attempt += 1) {
-		const seen = await ctx.kv.getVersioned<string>(SALT);
-		if (seen?.value) return seen.value;
-		const next = crypto.randomUUID();
-		if ((await ctx.kv.compareAndSet(SALT, seen?.revision ?? null, next)).applied) return next;
-	}
-	return asString(await ctx.kv.get<string>(SALT)) || crypto.randomUUID();
+/**
+ * One salt per site, and whether it was made in this call. At most two calls and no retry loop:
+ * a read, and when there is no salt yet, one compare-and-set. Null when a parallel first request
+ * created it at the same moment: the caller stores nothing this time (the next request reads it).
+ * A fresh salt means no visitor record can exist yet, so callers skip reading one.
+ */
+export async function visitorSalt(ctx: Ctx): Promise<{ salt: string; fresh: boolean } | null> {
+	const seen = await ctx.kv.getVersioned<string>(SALT);
+	if (seen?.value) return { salt: seen.value, fresh: false };
+	const next = crypto.randomUUID();
+	if ((await ctx.kv.compareAndSet(SALT, seen?.revision ?? null, next)).applied) return { salt: next, fresh: true };
+	return null;
 }
 
 /** The key this request's guest is counted by, or null when there is no usable address. */
@@ -32,9 +35,9 @@ export function requestAddress(routeCtx: { requestMeta?: unknown }): string | nu
 }
 
 /** Hash of a guest address or a member id with the site salt. Never the address itself. */
-export async function visitorHash(ctx: Ctx, who: { address: string } | { member: string }): Promise<string> {
+export async function visitorHash(salt: string, who: { address: string } | { member: string }): Promise<string> {
 	const material = "address" in who ? `ip:${who.address}` : `member:${who.member}`;
-	return sha256(`${await visitorSalt(ctx)}:${material}`);
+	return sha256(`${salt}:${material}`);
 }
 
 export function normaliseTerm(raw: unknown): string {
