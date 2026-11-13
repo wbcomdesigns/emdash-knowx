@@ -57,21 +57,26 @@ export async function pageMetadata(page: PageLike, ctx: Parameters<typeof articl
 	const title = asString(page.pageTitle) || asString(page.title) || "";
 	const url = page.canonical || page.url;
 	const crumbs = breadcrumbItems(page, "/docs");
-	const contributions: JsonLd[] = [
-		{
-			kind: "jsonld",
-			id: `knowx-${isFaq ? "faq" : "article"}:${content.id}`,
-			graph: {
-				"@context": "https://schema.org",
-				"@type": isFaq ? "FAQPage" : "Article",
-				headline: title,
-				description: page.description,
-				url,
-				dateModified: page.articleMeta?.modifiedTime || undefined,
-				datePublished: page.articleMeta?.publishedTime || undefined,
-			},
-		},
-	];
+	// One FAQ entry gets breadcrumbs only. A FAQPage needs every question and answer in mainEntity,
+	// which the kit's /docs/faq/ page already renders from the whole collection; this hook would
+	// have to read the entry again for its answer, and an empty FAQPage fails schema validation.
+	const contributions: JsonLd[] = isFaq
+		? []
+		: [
+				{
+					kind: "jsonld",
+					id: `knowx-article:${content.id}`,
+					graph: {
+						"@context": "https://schema.org",
+						"@type": "Article",
+						headline: title,
+						description: page.description,
+						url,
+						dateModified: page.articleMeta?.modifiedTime || undefined,
+						datePublished: page.articleMeta?.publishedTime || undefined,
+					},
+				},
+			];
 	if (crumbs) {
 		contributions.push({
 			kind: "jsonld",
@@ -83,5 +88,5 @@ export async function pageMetadata(page: PageLike, ctx: Parameters<typeof articl
 			},
 		});
 	}
-	return contributions;
+	return contributions.length ? contributions : null;
 }

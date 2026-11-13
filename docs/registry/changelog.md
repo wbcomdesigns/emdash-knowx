@@ -1,3 +1,10 @@
+## 0.2.2
+
+No new permission. The site kit did not change.
+
+- Improve  - The registry checks the site runs EmDash 1.2.0 or later before installing.
+- Fix      - A single FAQ page no longer carries incomplete FAQ structured data.
+
 ## 0.2.1
 
 After updating from 0.1.x, Insights shows its upgrade progress until it is done.
@@ -17,12 +24,6 @@ Every help page, vote, search and admin screen now fits Cloudflare's limit of 10
 - Fix      - On Cloudflare Insights, Settings and their actions no longer fail on a busy site.
 - Fix      - The setup card says where to create the content types on a site without SQLite.
 
-## 0.1.5
-
-- Security: guests vote and searches are counted only when the host gives EmDash the visitor's address; elsewhere guests sign in to vote. Search log capped at 5000 terms.
-- New: one command copies the kit and creates the content types. Insights shows a Set up visitor pages card, and Top searches has find and paging.
-- Fix: Insights counts every search and vote; help pages line up with the theme frame; dark mode buttons pass 4.5:1.
-
 Older versions: https://github.com/wbcomdesigns/emdash-knowx/blob/main/CHANGELOG.md
 
 To copy the kit for this version, from your site's root folder:
@@ -30,7 +31,7 @@ To copy the kit for this version, from your site's root folder:
 ```bash
 kit="$(mktemp -d)" &&
   git clone --depth 1 \
-    --branch v0.2.1 \
+    --branch v0.2.2 \
     https://github.com/wbcomdesigns/emdash-knowx \
     "$kit/emdash-knowx" &&
   "$kit/emdash-knowx/scripts/add-to-site.sh" .

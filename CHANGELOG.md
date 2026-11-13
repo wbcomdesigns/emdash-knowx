@@ -2,6 +2,14 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.2.2] - 2026-11-13
+
+Install check and structured data fixes. No new permission. Nothing in the site kit changed, so copying it again is optional.
+
+- Improve  - The plugin registry now checks that a site runs EmDash 1.2.0 or later before it installs KnowX.
+- Fix      - A single FAQ entry page no longer carries FAQ structured data without its question and answer, which schema validators reject; the FAQ page at /docs/faq/ keeps the full list.
+- Dev      - The kit install script is now tested on throwaway sites with every test run.
+
 ## [0.2.1] - 2026-10-20
 
 After updating from 0.1.x, Insights shows the upgrade progress until it is done. No new permission. Copy the site kit again for the vote fix.
