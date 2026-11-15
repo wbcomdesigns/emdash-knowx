@@ -24,9 +24,9 @@ Give a site a help center: articles in categories, a search that readers actuall
 
 **Who it is for:** Product and service sites that answer the same support questions repeatedly.
 
-**WordPress source:** KnowX theme (`~/dev/repos/knowx`) for layout and wording only. It is a WordPress theme, so nothing ports directly. Do not copy PHP.
+**WordPress source:** KnowX theme ((the WordPress theme of the same name)) for layout and wording only. It is a WordPress theme, so nothing ports directly. Do not copy PHP.
 
-**Brand:** KnowX, gold on charcoal. Full kit (mark, wordmark, horizontal, square, each in light, dark and white, plus PNGs and social banners) and the brand sheet: `~/Documents/brand logos/knowx/`. `icon.png` and `images/banner.png` in this repo come from it. Rebuild with the pipeline in `~/Documents/brand logos/_render-src/`, never by hand.
+**Brand:** KnowX, gold on charcoal. Full kit (mark, wordmark, horizontal, square, each in light, dark and white, plus PNGs and social banners) and the brand sheet: the Wbcom brand kit. `icon.png` and `images/banner.png` in this repo come from it. Rebuild from the brand kit pipeline, never by hand.
 
 ## Fits every kind of site
 
