@@ -22,6 +22,11 @@ export const kx = {
 	kindPage: "Page",
 	categoriesHeading: "Topics",
 	articlesHeading: "Articles",
+	/** Paging under the help home's article list and the search results. */
+	moreArticles: "More articles",
+	newestArticles: "Back to the newest articles",
+	moreResults: "More results",
+	firstResults: "Back to the first results",
 	emptyHomeTitle: "No help articles yet",
 	emptyHomeHint: "Articles appear here once they are published.",
 	emptyCategoryTitle: "No articles in this topic yet",

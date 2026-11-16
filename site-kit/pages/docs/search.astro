@@ -9,12 +9,16 @@ import "../../styles/knowx.css";
 
 const q = (Astro.url.searchParams.get("q") || "").trim();
 const honeypot = Astro.url.searchParams.get("website") || "";
+// Later pages of the same search (#64 follow-up: results stopped at 20 with no way on).
+const after = Astro.url.searchParams.get("after") || undefined;
+let nextCursor = "";
 const config = await loadConfig(Astro.locals);
 let items: Array<{ collection: string; slug: string | null; title?: string; snippetHtml: string; excerpt: string }> = [];
 let failed = false;
 if (q) {
 	try {
-		const result = await search(q, { collections: config.searchCollections, limit: 20 });
+		const result = await search(q, { collections: config.searchCollections, limit: 20, cursor: after });
+		nextCursor = result.nextCursor || "";
 		const needExcerpt = result.items.some((item) => !resultSnippet(item.title || "", item.snippet));
 		const excerpts = new Map<string, string>();
 		if (needExcerpt) {
@@ -39,7 +43,10 @@ const title = q ? kx.searchResultsFor(q) : kx.searchTitle;
 // The search is counted from the browser, so the request carries the visitor's address: it is only
 // counted when the host gives EmDash that address (owner decision 2026-10-16). The markup is the
 // same for every visitor, so the page can be cached.
-const log = q && !failed && !honeypot ? jsonForScript({ q, found: items.length }) : "";
+// Only the first page counts, so paging through results never logs the same search twice.
+const log = q && !after && !failed && !honeypot ? jsonForScript({ q, found: items.length }) : "";
+const pageHref = (cursor?: string) =>
+	`${HELP_PATH}/search?q=${encodeURIComponent(q)}${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`;
 ---
 
 <Layout title={title} description={kx.homeLead}>
@@ -71,7 +78,7 @@ const log = q && !failed && !honeypot ? jsonForScript({ q, found: items.length }
 						</li>
 					))}
 				</ul>
-			) : (
+			) : after ? null : (
 				<div class="wb-empty">
 					<p>
 						<strong>{kx.searchNone}</strong>
@@ -84,7 +91,16 @@ const log = q && !failed && !honeypot ? jsonForScript({ q, found: items.length }
 			)
 		}
 
-		{q && !items.length && !failed ? <StillNeedHelp href={config.contactUrl} /> : null}
+		{
+			q && !failed && (nextCursor || after) ? (
+				<nav class="kx-more" aria-label={title}>
+					{after ? <a class="wb-btn wb-btn--quiet" href={pageHref()}>{kx.firstResults}</a> : null}
+					{nextCursor ? <a class="wb-btn" href={pageHref(nextCursor)}>{kx.moreResults}</a> : null}
+				</nav>
+			) : null
+		}
+
+		{q && !items.length && !failed && !after ? <StillNeedHelp href={config.contactUrl} /> : null}
 	</div>
 	{log ? <script type="application/json" data-kx-search-log set:html={log} /> : null}
 </Layout>

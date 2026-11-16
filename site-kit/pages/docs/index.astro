@@ -9,19 +9,22 @@ import { useProductLayer } from "../../lib/knowx-products";
 import "../../styles/wbcom-base.css";
 import "../../styles/knowx.css";
 
+// Every published article is reachable from here: newest first, a page at a time (#64).
+const ARTICLES_PAGE = 10;
+const after = Astro.url.searchParams.get("after") || undefined;
 const [config, products, terms, docs] = await Promise.all([
 	loadConfig(Astro.locals),
 	loadProducts(Astro.locals),
 	getTaxonomyTerms("doc_category").catch(() => []),
-	getEmDashCollection("docs", { orderBy: { published_at: "desc" }, limit: 200 }),
+	getEmDashCollection("docs", { orderBy: { published_at: "desc" }, limit: ARTICLES_PAGE, cursor: after }),
 ]);
 if (Astro.cache?.enabled) Astro.cache.set(docs.cacheHint);
 
+type Term = { slug: string; count?: number; children?: Term[] };
 const top = terms.filter((term) => !term.parentId);
 const productLayer = products.productLayer || useProductLayer(top.length);
-const countFor = (slug: string) =>
-	top.find((term) => term.slug === slug)?.count ??
-	docs.entries.filter((entry) => (entry.data.terms?.doc_category ?? []).some((term) => term.slug === slug)).length;
+const allTerms = (items: Term[]): Term[] => items.flatMap((term) => [term, ...allTerms(term.children ?? [])]);
+const countFor = (slug: string) => allTerms(terms).find((term) => term.slug === slug)?.count ?? 0;
 
 const cards = (products.items.length ? products.items : top.map((term) => ({
 	slug: term.slug,
@@ -37,6 +40,7 @@ const cards = (products.items.length ? products.items : top.map((term) => ({
 }));
 
 const articles = docs.entries;
+const nextPage = docs.nextCursor ? `?after=${encodeURIComponent(docs.nextCursor)}#articles` : "";
 ---
 
 <Layout title={kx.homeTitle} description={kx.homeLead}>
@@ -70,11 +74,11 @@ const articles = docs.entries;
 		}
 
 		{
-			articles.length ? (
-				<section class="kx-section">
+			articles.length || after ? (
+				<section class="kx-section" id="articles">
 					<h2>{kx.articlesHeading}</h2>
 					<ul class="kx-list">
-						{articles.slice(0, 8).map((entry) => (
+						{articles.map((entry) => (
 							<li>
 								<a class="wb-item" href={`/docs/${entry.data.slug || entry.id}`}>
 									<strong>{entry.data.title}</strong>
@@ -83,6 +87,12 @@ const articles = docs.entries;
 							</li>
 						))}
 					</ul>
+					{nextPage || after ? (
+						<nav class="kx-more" aria-label={kx.articlesHeading}>
+							{after ? <a class="wb-btn wb-btn--quiet" href={`${Astro.url.pathname}#articles`}>{kx.newestArticles}</a> : null}
+							{nextPage ? <a class="wb-btn" href={nextPage}>{kx.moreArticles}</a> : null}
+						</nav>
+					) : null}
 				</section>
 			) : cards.length ? null : (
 				<div class="wb-empty">
