@@ -95,6 +95,21 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 				</div>
 			) : (
 				<div class="kx-layout">
+					{/* First in reading and tab order, and at the top on a phone; beside the article on wide screens (#65). */}
+					{
+						showToc ? (
+							<aside class="kx-toc">
+								<h2>{kx.tocTitle}</h2>
+								<ol>
+									{headings.map((item) => (
+										<li>
+											<a href={`#${item.id}`}>{item.text}</a>
+										</li>
+									))}
+								</ol>
+							</aside>
+						) : null
+					}
 					<article class="kx-article">
 						<header class="kx-hero">
 							<h1>{entry.data.title}</h1>
@@ -147,20 +162,6 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 						}
 						<Helpful id={entry.data.id} />
 					</article>
-					{
-						showToc ? (
-							<aside class="kx-toc">
-								<h2>{kx.tocTitle}</h2>
-								<ol>
-									{headings.map((item) => (
-										<li>
-											<a href={`#${item.id}`}>{item.text}</a>
-										</li>
-									))}
-								</ol>
-							</aside>
-						) : null
-					}
 				</div>
 			)
 		}
@@ -193,12 +194,14 @@ const headingCopy = jsonForScript({ copy: kx.copyLink, copied: kx.copiedLink, co
 			const btn = document.createElement("button");
 			btn.type = "button";
 			btn.className = "kx-heading-tools";
-			btn.setAttribute("aria-label", copy.copy || "Copy link");
+			// Each button names its heading, so five of them do not all read "Copy link" (#67).
+			const name = heading.textContent?.trim() || "";
+			btn.setAttribute("aria-label", `${copy.copy || "Copy link"}: ${name}`);
 			btn.innerHTML = linkIcon;
 			btn.addEventListener("click", async () => {
 				const url = `${location.origin}${location.pathname}#${heading.id}`;
 				await navigator.clipboard.writeText(url).catch(() => {});
-				btn.setAttribute("aria-label", copy.copied || "Link copied");
+				btn.setAttribute("aria-label", `${copy.copied || "Link copied"}: ${name}`);
 			});
 			const row = document.createElement("div");
 			row.className = "kx-heading-row";
