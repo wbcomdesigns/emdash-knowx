@@ -44,6 +44,11 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-13 | Contact link set: search for nonsense, and vote No on an article | Both show Still need help with a working button |
 | G-14 | Contact link empty: do the same | No panel, no empty box |
 | G-15 | Add `posts` to the search setting, search for a word from a post | The post is in the results, labelled as a post |
+| G-16 | Help home with more than ten articles, one in no topic | Ten newest under Articles, More articles opens the next ten, Back to the newest articles returns; every article is reachable (0.2.3, #64) |
+| G-17 | Search a word in more than 20 articles | 20 results, More results opens the rest, Back to the first results returns; Searches counts the search once (0.2.3) |
+| G-18 | Article with five headings at 390, then Tab from the top at 1440 | On this page is above the article on the phone and beside it at 1440; Tab reaches its links before the article body (0.2.3, #65) |
+| G-19 | Press No, reload | No shows as chosen (aria-pressed true) (0.2.3, #66) |
+| G-20 | Tab through an article's headings | Each copy button reads "Copy link: <heading>" (0.2.3, #67) |
 | G-92 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
 
 ## Member (subscriber role)
@@ -51,6 +56,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | ID | Steps | Expected |
 | --- | --- | --- |
 | M-1 | Do G-4 to G-6 signed in | Same behaviour. Signing in changes nothing in this plugin |
+| M-2 | Open the admin, click KnowX Insights, Searches, Settings; open the dashboard | EmDash lists the pages (core shows plugin pages to every role); each shows "Only site admins can use KnowX", never a raw 403 or JSON (0.2.3, #63) |
 
 ## Admin
 

@@ -2,6 +2,20 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first. Never publish a version that is not on `origin/main`.
 
+## [0.2.3] - 2026-11-16
+
+Admin, paging and article page fixes. No new permission. Copy the site kit again after you update.
+
+- Fix      - Signed-in members below admin who open a KnowX admin page or the dashboard card see "Only site admins can use KnowX" instead of a raw permission error.
+- Fix      - The help home lists every article, newest first, ten at a time with More articles.
+- Fix      - Search results go on past the first 20 with More results; a later page is not counted again in Searches.
+- Fix      - On a phone the article's On this page list comes before the article, and it is first in keyboard order on every screen.
+- Fix      - Yes or No on Was this helpful shows as chosen after a reload in the same browser.
+- Fix      - Each heading's copy link button names its heading for screen readers.
+- Improve  - The kit command clones the release tag without git's detached-head notice.
+- Improve  - The registry Installation text says to deploy again on Cloudflare after a registry install or update.
+- Dev      - Shared kit files updated: long words wrap inside kit cards (wbcom-shared 5) and plain-HTTP sites reach a locally installed plugin (wbcom-kit 6).
+
 ## [0.2.2] - 2026-11-13
 
 Install check and structured data fixes. No new permission. Nothing in the site kit changed, so copying it again is optional.
