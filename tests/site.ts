@@ -17,7 +17,11 @@ export const admin = member("root", 50);
  */
 export async function openSite() {
 	const rt = await createPluginRuntimeTestHost();
-	const call = rt.transport.invokeRoute.bind(rt.transport);
+	const invoke = rt.transport.invokeRoute.bind(rt.transport);
+	// EmDash only dispatches the admin route for a signed-in user (#63); the test host passes none
+	// unless told, so admin calls without one are made as the site admin, as in production.
+	const call: typeof invoke = (name, input, opts) =>
+		invoke(name, input, name === "admin" && !(opts as { user?: unknown } | undefined)?.user ? { method: "POST", ...opts, user: admin } : opts);
 	const asGuest = { method: "POST" };
 	const as = (user: ReturnType<typeof member>, method = "POST") => ({ method, user });
 	return { rt, call, as, asGuest, dispose: () => rt.dispose() };
