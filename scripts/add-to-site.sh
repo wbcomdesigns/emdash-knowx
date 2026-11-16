@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Adds the KnowX help pages to an EmDash site. Run from the site's root folder (see the install guide):
 #   kit="$(mktemp -d)" &&
-#     git clone --depth 1 \
-#       --branch v<version> \
+#     git -c advice.detachedHead=false \
+#       clone --depth 1 --branch v<version> \
 #       https://github.com/wbcomdesigns/emdash-knowx \
 #       "$kit/emdash-knowx" &&
 #     "$kit/emdash-knowx/scripts/add-to-site.sh" .
@@ -143,8 +143,8 @@ Left for you:
 After each plugin update, run this from the site root with the new version's tag:
 
   kit="\$(mktemp -d)" &&
-    git clone --depth 1 \\
-      --branch v<new version> \\
+    git -c advice.detachedHead=false \\
+      clone --depth 1 --branch v<new version> \\
       https://github.com/wbcomdesigns/emdash-knowx \\
       "\$kit/emdash-knowx" &&
     "\$kit/emdash-knowx/scripts/add-to-site.sh" .

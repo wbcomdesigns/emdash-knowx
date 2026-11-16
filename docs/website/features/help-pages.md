@@ -4,12 +4,12 @@
 
 ## Help home
 
-`/docs/` opens with a search box, then your topics as cards, then a list of articles.
+`/docs/` opens with a search box, then your topics as cards, then every published article, newest first, ten at a time with **More articles** for the rest.
 
 ![The help home with a search box, three topic cards and a list of articles](../images/help-home.webp)
 
 - With one top-level help category (or none), the cards are your topics.
-- With several top-level categories, KnowX treats each as a product: a card with its name, description and the icon you picked in **Settings**, **Product icons**.
+- With several top-level categories, KnowX treats each as a product: a card with its name and description (both edited in **Help categories**) and the icon you picked in **Settings**, **Product icons**.
 
 ## Topic pages
 
@@ -25,7 +25,7 @@ An article at `/docs/<article>/` has:
 
 - A breadcrumb (Help / topic / article).
 - The **Applies to version** badge, when filled in.
-- **On this page**: the article's headings as a table of contents, on articles with three or more headings.
+- **On this page**: the article's headings as a table of contents, on articles with three or more headings. It sits beside the article on wide screens and above it on a phone.
 - A copy-link icon next to each heading, shown on hover or keyboard focus.
 - A copy button on every code block.
 - The last updated date.

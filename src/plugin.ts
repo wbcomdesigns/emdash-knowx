@@ -1,6 +1,6 @@
 import type { SandboxedPlugin } from "emdash/plugin";
 
-import { handleAdmin } from "./admin";
+import { ADMIN_ONLY, handleAdmin, isSiteAdmin } from "./admin";
 import { articleCollection, collectionStatus, MEMBER, SIGN_IN } from "./core";
 import { pageMetadata } from "./metadata";
 import {
@@ -64,8 +64,13 @@ const plugin: SandboxedPlugin = {
 			},
 		},
 		tally: { public: true, handler: async (routeCtx, ctx) => handleTally(routeCtx, ctx) },
+		// EmDash lists plugin admin pages to every signed-in role and, with no permission set, answers
+		// lower roles with a raw 403 the admin prints as JSON (#63). The route admits members so it can
+		// answer them with a plain page, and refuses everything below admin here, before any read.
 		admin: {
-			handler: async (routeCtx, ctx) => handleAdmin(routeCtx.input, ctx, requestAddress(routeCtx) !== null),
+			permission: MEMBER,
+			handler: async (routeCtx, ctx) =>
+				isSiteAdmin(routeCtx.user) ? handleAdmin(routeCtx.input, ctx, requestAddress(routeCtx) !== null) : ADMIN_ONLY,
 		},
 	},
 };

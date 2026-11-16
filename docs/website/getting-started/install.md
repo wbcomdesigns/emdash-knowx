@@ -25,8 +25,8 @@ Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Work
 
    ```bash
    kit="$(mktemp -d)" &&
-     git clone --depth 1 \
-       --branch v0.2.2 \
+     git -c advice.detachedHead=false \
+       clone --depth 1 --branch v0.2.3 \
        https://github.com/wbcomdesigns/emdash-knowx \
        "$kit/emdash-knowx" &&
      "$kit/emdash-knowx/scripts/add-to-site.sh" .

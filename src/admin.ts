@@ -25,12 +25,28 @@ type Block = Record<string, unknown>;
 
 const REPO_URL = "https://github.com/wbcomdesigns/emdash-knowx";
 
+/** EmDash's admin role level; plugins:manage (the default for a plugin admin route) needs it. */
+const ROLE_ADMIN = 50;
+
+export const isSiteAdmin = (user: { role?: number } | undefined): boolean => (user?.role ?? 0) >= ROLE_ADMIN;
+
+/** What a signed-in member below admin sees on every KnowX page and the dashboard widget. No call. */
+export const ADMIN_ONLY: BlockResponse = {
+	blocks: [
+		{
+			type: "empty",
+			title: "Only site admins can use KnowX",
+			description: "Insights, Searches and Settings are for site administrators. Ask an administrator of this site if you need something here.",
+		},
+	],
+};
+
 /** The shared six-line kit command (starter BEFORE_YOU_INSTALL.md). */
 export function kitCommand(tag: string): string {
 	return [
 		`kit="$(mktemp -d)" &&`,
-		`  git clone --depth 1 \\`,
-		`    --branch ${tag} \\`,
+		`  git -c advice.detachedHead=false \\`,
+		`    clone --depth 1 --branch ${tag} \\`,
 		`    ${REPO_URL} \\`,
 		`    "$kit/emdash-knowx" &&`,
 		`  "$kit/emdash-knowx/scripts/add-to-site.sh" .`,

@@ -3,15 +3,15 @@
 **1. Your site needs a sandbox runner.** Registry plugins run in a sandbox. Until the site has one, Admin, Plugins shows "No plugins configured" and there is no Registry in the menu.
 
 - **Node:** in your site, run `npm install @emdash-cms/sandbox-workerd workerd`, then add `sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox",` inside `emdash({ ... })` in `astro.config.mjs`.
-- **Cloudflare:** add `import { sandbox } from "@emdash-cms/cloudflare";` and `sandboxRunner: sandbox(),`. It needs the Workers Paid plan, the `worker_loaders` binding named `LOADER` (uncomment it in your Wrangler config) and an R2 bucket as `storage: r2(...)`, or the install stops with "Storage error while installing plugin". Then run `npm run deploy`.
+- **Cloudflare:** add `import { sandbox } from "@emdash-cms/cloudflare";` and `sandboxRunner: sandbox(),`. It needs the Workers Paid plan, the `worker_loaders` binding named `LOADER` (uncomment it in your Wrangler config) and an R2 bucket as `storage: r2(...)`, or the install stops with "Storage error while installing plugin". Then run `npm run deploy`, and deploy again after every registry install or update (emdash-cms/emdash#4865).
 
-Stop the dev server and start it again. **Registry** now shows in the admin menu.
+Restart the dev server. **Registry** now shows in the admin menu.
 
 **2. The plugin is the engine. Visitor pages come from its site kit.** A registry plugin cannot add pages to your site. Until you copy the kit, its addresses (for example `/docs/`) show your site's 404 page. That is expected. The kit copy below takes one command.
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step.
 
-Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Workers (registry install).
+Checked on EmDash 1.5 with the `blog` template, on Node and Cloudflare Workers.
 
 ## Install
 
@@ -20,8 +20,8 @@ Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Work
 
    ```bash
    kit="$(mktemp -d)" &&
-     git clone --depth 1 \
-       --branch v0.2.2 \
+     git -c advice.detachedHead=false \
+       clone --depth 1 --branch v0.2.3 \
        https://github.com/wbcomdesigns/emdash-knowx \
        "$kit/emdash-knowx" &&
      "$kit/emdash-knowx/scripts/add-to-site.sh" .
@@ -31,4 +31,4 @@ Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Work
 4. In Admin, Menus, add `/docs/` and `/docs/faq/`.
 5. Open KnowX, Insights, then add articles in Content, Help articles.
 
-Run step 2 again after every update. Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v0.2.2/docs/website/getting-started/install.md
+Run step 2 again after every update. Guide: https://github.com/wbcomdesigns/emdash-knowx/blob/v0.2.3/docs/website/getting-started/install.md

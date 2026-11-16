@@ -114,6 +114,27 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 	}
 
 	/**
+	 * This reader's last counted vote per article, kept in the browser only, so Yes or No shows as
+	 * chosen after a reload (#66). Markup stays the same for everyone; storage blocked = no mark.
+	 */
+	const voteKey = (id: string) => `knowx-vote:${id}`;
+	function savedVote(id: string): boolean | null {
+		try {
+			const saved = localStorage.getItem(voteKey(id));
+			return saved === "yes" ? true : saved === "no" ? false : null;
+		} catch {
+			return null;
+		}
+	}
+	function saveVote(id: string, helpful: boolean) {
+		try {
+			localStorage.setItem(voteKey(id), helpful ? "yes" : "no");
+		} catch {
+			// Storage blocked: the vote still counted, it just is not marked after a reload.
+		}
+	}
+
+	/**
 	 * Whether this host lets guests vote (it gives EmDash the visitor's address). It is the same for
 	 * every page of the site, so it is asked once per browser session, never before a vote: on
 	 * Cloudflare the health route takes seconds. Unknown (undefined) until health or a guest vote answers.
@@ -158,6 +179,8 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 		let guestBlocked = false;
 		let busy = false;
 		let voted = false;
+		const earlier = savedVote(id);
+		if (earlier !== null) markChoice(root, earlier);
 
 		// Config and the tally load side by side and never hold up a vote.
 		const configLoaded = api("knowx", "config");
@@ -238,6 +261,7 @@ const signIn = `/_emdash/admin/login?redirect=${encodeURIComponent(Astro.url.pat
 				// An older strings file may not have the newer phrases yet.
 				status.textContent = (comment ? copy.commentThanks || copy.thanks : copy.thanks) || "";
 				markChoice(root, helpful);
+				saveVote(id, helpful);
 				const config = await configLoaded;
 				const contactUrl = typeof config.contactUrl === "string" ? config.contactUrl : "";
 				if (commentForm) commentForm.hidden = helpful || config.askComment === false || Boolean(comment);
